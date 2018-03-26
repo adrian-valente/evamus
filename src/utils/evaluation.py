@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from collections import defaultdict
 from utils.midiparser import getDictionaries, parseFolder, cleanDic, writeMIDI
 from utils.preprocessing import toZ, toMIDI
 
@@ -50,11 +51,16 @@ def evaluate(generated_data, reference_data):
     return None
 
 
-def plot_metric(values, title="", uniform=None):
+def plot_metric(metrics, metric, title="", uniform=None):
     """
     Plots a bar chart comparing the value of metric on different models with error bars
     :param values: a dictionary mapping model name -> a sequence of values of the metric
     """
+    values = {}
+    for model in metrics:
+        if metric in metrics[model]:
+            values[model] = metrics[model][metric]
+
     x_i = np.arange(len(values))
     y = [np.mean(values[model]) for model in values]
     yerr = [np.std(values[model]) for model in values]
@@ -67,3 +73,64 @@ def plot_metric(values, title="", uniform=None):
         plt.axhline(uniform, color='red', alpha=0.5)
 
     plt.show()
+
+
+def analyze_chords(real_data, gen_data):
+    real_dis = defaultdict(float)
+    gen_dis = defaultdict(float)
+
+    for s, song in enumerate(real_data['dTseqs']):
+        for i, dT in enumerate(song):
+            if dT == 0 and i > 0:
+                diff = abs(real_data['pitchseqs'][s][i] - real_data['pitchseqs'][s][i-1])%12
+                real_dis[diff] += 1
+
+    for s, song in enumerate(gen_data['dTseqs']):
+        for i, dT in enumerate(song):
+            if dT == 0 and i > 0:
+                diff = abs(gen_data['pitchseqs'][s][i] - gen_data['pitchseqs'][s][i-1])%12
+                gen_dis[diff] += 1
+
+    print real_dis
+
+    keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
+    idx = np.arange(len(keys))
+    plt.xticks(idx, keys)
+
+    ax = plt.subplot(211)
+    ax.bar(idx, [real_dis[k] for k in keys])
+
+    ax = plt.subplot(212)
+    ax.bar(idx, [gen_dis[k] for k in keys])
+    plt.show()
+
+
+def analyze_intervals(real_data, gen_data):
+    real_dis = defaultdict(float)
+    gen_dis = defaultdict(float)
+
+    for s, song in enumerate(real_data['dTseqs']):
+        for i, dT in enumerate(song):
+            if dT != 0 and i > 0:
+                diff = abs(real_data['pitchseqs'][s][i] - real_data['pitchseqs'][s][i - 1])%12
+                real_dis[diff] += 1
+
+    for s, song in enumerate(gen_data['dTseqs']):
+        for i, dT in enumerate(song):
+            if dT != 0 and i > 0:
+                diff = abs(gen_data['pitchseqs'][s][i] - gen_data['pitchseqs'][s][i - 1])%12
+                gen_dis[diff] += 1
+
+    print real_dis
+
+    keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
+    idx = np.arange(len(keys))
+    plt.xticks(idx, keys)
+
+    ax = plt.subplot(211)
+    ax.bar(idx, [real_dis[k] for k in keys])
+
+    ax = plt.subplot(212)
+    ax.bar(idx, [gen_dis[k] for k in keys])
+    plt.show()
+
