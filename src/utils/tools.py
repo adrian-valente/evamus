@@ -23,14 +23,14 @@ def trainsingleorder(data, order):
     Returns a trained dictionary on data at given order for a single sequence
     :param data: a sequence
     :param order: an int (0 for frequency count, 1 for Markov...)
-    :return: if order is 0 a dict {str(value) -> prob of occurrence}
-             for bigger orders a dict {str(history) -> {str(value) -> prob of occurrence} }
+    :return: if order is 0 a dict {value -> prob of occurrence}
+             for bigger orders a dict {str(history) -> {value -> prob of occurrence} }
     """
     if order == 0:
         res = defaultdict(float)
         for song in data:
             for i in song:
-                res[str(i)] += 1
+                res[i] += 1
         res = normalize(res)
         return res
     else:
@@ -39,7 +39,7 @@ def trainsingleorder(data, order):
         for song in data:
             for i in xrange(len(song) - order):
                 hist = str(song[i:i + order])
-                n = str(song[i + order])
+                n = song[i + order]
                 res[hist][n] += 1
         # Normalization
         for hist in res:
@@ -65,24 +65,8 @@ def dic_sample(d):
         if cumulative > u:
             return k
 
-
-class DiscretePDF:
-    """
-    Useful class enabling to sample an element from a discrete probability distribution defined by
-    a dictionary {elts->probability}
-    """
-
-    def __init__(self, d):
-        self.cdf = [0]
-        self.elts = [None,]
-        for k in d:
-            self.cdf.append(d[k] + self.cdf[-1])
-            self.elts.append(k)
-
-    def sample(self):
-        u = random()
-        i = 0
-        while self.cdf[i] <= u:
-            i += 1
-        return self.elts[i]
-
+def keys_subtract(d, x):
+    res = defaultdict(float)
+    for k in d:
+        res[k-x] = d[k]
+    return res

@@ -1,3 +1,47 @@
+from utils.midiparser import getDictionaries, parseFolder, cleanDic, writeMIDI
+
+def preprocess(datapath, writeMIDI=False):
+    """
+    Parses a datapath and returns a preprocessed dataset, either splitted or not
+    :param datapath:
+    :param writeMIDI:
+    :return:
+    """
+    dictionaries = getDictionaries()
+    dataset = parseFolder(datapath, dictionaries)
+    dictionaries = cleanDic(dataset, dictionaries)
+    xdTs, xTs, xPs, dTvocsize, Tvocsize, pitchvocsize = toZ(dataset, dictionaries)
+    dataset = {'dTseqs': xdTs, 'tseqs': xTs, 'pitchseqs': xPs}
+
+    if writeMIDI:
+        dtseq, Tseq, pitchseq = toMIDI(xdTs[0], xTs[0], xPs[0], dictionaries)
+        for dt, t, p in zip(dtseq, Tseq, pitchseq):
+            print(dictionaries['duration_text'][dictionaries['dtseqs'].index(dt)],
+                  dictionaries['duration_text'][dictionaries['Tseqs'].index(t)],
+                  dictionaries['pitch_text'][dictionaries['pitchseqs'].index(p)])
+        writeMIDI(dtseq, Tseq, pitchseq, path='../data/', label='example')
+
+    return dataset, (dTvocsize, Tvocsize, pitchvocsize), dictionaries
+
+
+def split(dataset, k):
+    """
+    :param dataset: a dictionary of list of sequences containing the lists 'dtseqs', 'Tseqs', 'pitchseq'
+    :param k: the number of folds
+    :return: a list of dictionaries {'train':, 'test':} where train and test have the same format as dataset
+    (note: train and test are views, and not copies of the original dataset)
+    """
+    n = len(dataset['tseqs'])
+    ret = []
+    for i in xrange(k):
+        ret.append({'train':{}, 'test':{}})
+        for key in dataset:
+            ret[-1]['train'][key] =  dataset[key][:i*(n//k)] + dataset[key][min((i+1)*(n//k), n):]
+            ret[-1]['test'][key] = dataset[key][i*(n//k):min((i+1)*(n//k), n)]
+    return ret
+
+
+
 def transpose(pitch_seq):
     upperbound = max(pitch_seq)
     lowerbound = min(pitch_seq)

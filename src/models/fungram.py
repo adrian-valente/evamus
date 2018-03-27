@@ -1,7 +1,7 @@
-from utils.tools import trainsingleorder, dic_argmax, dic_sample
-from math import log
+from utils.tools import trainsingleorder, dic_argmax, dic_sample, keys_subtract
 from utils.preprocessing import toMIDI
 from utils.midiparser import writeMIDI
+
 
 class FUNgram:
     """
@@ -15,7 +15,7 @@ class FUNgram:
                  for bigger orders a dict {str(history) -> {str(value) -> prob of occurrence} })
     """
 
-    def __init__(self, sizes, order):
+    def __init__(self, order, sizes=(25,25,54)):
         self.tstart = sizes[0]
         self.pstart = self.tstart + sizes[1]
         self.nValues = self.pstart + sizes[2]
@@ -37,15 +37,53 @@ class FUNgram:
                 unrolled[-1].append(self.pstart + ps[i])
         return unrolled
 
-    def train(self, data):
+    def train(self, dataset):
         """
-        :param data: Unrolled dataset (apply preprocess first)
+        :param dataset: Standard format dataset
         """
+        data = self.preprocess(dataset)
         for i in range(self.order+1):
             self.probs.append(trainsingleorder(data, i))
-        return self.test(data, False)
+        return self.predict(dataset)
 
-    def predict(self, hist, return_fallback=False):
+    def predict(self, dataset):
+        """
+        Returns predictions over a dataset
+        :param dataset:
+        :return:
+        """
+        predictions = {"dTseqs": [], "tseqs": [], "pitchseqs": []}
+        data = self.preprocess(dataset)
+        for song in data:
+            predictions["dTseqs"].append([])
+            predictions["tseqs"].append([])
+            predictions["pitchseqs"].append([])
+            l = len(song)
+            for i in range(0, l, 3):
+                hist = song[max(0,i-self.order):i]
+                note = (song[i], song[i+1], song[i+2])
+                pdT, pt, pp = self.predictNote(hist, note)
+                predictions["dTseqs"][-1].append(pdT)
+                predictions["tseqs"][-1].append(pt)
+                predictions["pitchseqs"][-1].append(pp)
+        return predictions
+
+    def predictNote(self, hist, note):
+        """
+        Retuns 3 probability vectors, one for each component of the note
+        :param hist: (a sequence) the unrolled history of previous notes
+        :param note: (a triplet) the note (dT, t, pitch)
+        :return: The 3 probability vectors (as defaultdicts)
+        """
+        dT, t, p = note
+        pdT = self.predictValue(hist)
+        hist.append(dT)
+        pt = keys_subtract(self.predictValue(hist), self.tstart)
+        hist.append(t)
+        pp = keys_subtract(self.predictValue(hist), self.pstart)
+        return pdT, pt, pp
+
+    def predictValue(self, hist):
         """
         Gives probability distribution of next value given hist
         :param hist: an unrolled history of previous values
@@ -61,133 +99,53 @@ class FUNgram:
 
         # Retrieve predictions
         if l == 0:
-            if return_fallback:
-                return self.probs[0], l
-            else:
-                return self.probs[0]
+            return self.probs[0]
         else:
-            if return_fallback:
-                return self.probs[l][str(hist)], l
-            else:
-                return self.probs[l][str(hist)]
+            return self.probs[l][str(hist)]
 
-    def probNote(self, hist, x):
+    def generate(self, n_songs=20, N=200, write_MIDI=False, dictionaries=None, path='../data/generated/'):
         """
-        :param hist: unrolled history
-        :param x: a note x=(dT, t, pitch)
-        :return: the probability of note x given hist
-        """
-        dT, t, p = x
-        pdT = self.predict(hist)[str(dT)]  # Pr(dT | hist)
-        hist.append(dT)
-        pt = self.predict(hist)[str(t)]   # Pr(t | dT, hist)
-        hist.append(t)
-        ppitch = self.predict(hist)[str(p)]  # Pr(p | t, dT, hist)
-        return pdT * pt * ppitch
-
-    def testNote(self, hist, x, metrics, smoothing=True, smoothing_lambda=0.05, n_dT=25, n_t=35, n_pitch=54):
-        """
-        CAUTION: FOR INTERNAL USE OF THE CLASS ONLY (uses side effects)
-        This function modifies the metrics dictionary by adding the log-likelihoods and accuracy for note x
-        for note x given history hist
-        :param hist: a sequence of notes
-        :param x: a tuple (dT, t, p) representing the current note
-        :param metrics: a dictionary of metrics to modify
-        :return: nothing (modifies metrics directly)
-        """
-        dT, t, p = x
-        distr_dT, fall_dT = self.predict(hist, True)
-        hist.append(dT)
-        distr_t, fall_t = self.predict(hist, True)
-        hist.append(t)
-        distr_pitch, fall_pitch = self.predict(hist, True)
-
-        metrics['fall_dT'] += fall_dT
-        metrics['fall_t'] += fall_t
-        metrics['fall_pitch'] += fall_pitch
-
-        pdT = distr_dT[str(x[0])]
-        pt = distr_t[str(x[1])]
-        ppitch = distr_pitch[str(x[2])]
-        pglobal = pdT * pt * ppitch
-
-        if smoothing:
-            pdT = smoothing_lambda * (1./n_dT) + (1 - smoothing_lambda) * pdT
-            pt = smoothing_lambda * (1. / n_t) + (1 - smoothing_lambda) * pt
-            ppitch = smoothing_lambda * (1. / n_pitch) + (1 - smoothing_lambda) * ppitch
-            pglobal = smoothing_lambda * (1./(n_dT * n_t * n_pitch)) + (1-smoothing_lambda) * pglobal
-
-        metrics['LL_dT'] += log(pdT) if pdT > 0 else -10000
-        metrics['LL_t'] += log(pt) if pt > 0 else -10000
-        metrics['LL_pitch'] += log(ppitch) if ppitch > 0 else -10000
-        metrics['LL_global'] += log(pglobal) if pglobal > 0 else -10000
-
-        accurate_dT = 1 if dic_argmax(distr_dT) == str(x[0]) else 0
-        accurate_t = 1 if dic_argmax(distr_t) == str(x[1]) else 0
-        accurate_pitch = 1 if dic_argmax(distr_pitch) == str(x[2]) else 0
-
-        metrics['accuracy_dT'] += accurate_dT
-        metrics['accuracy_t'] += accurate_t
-        metrics['accuracy_pitch'] += accurate_pitch
-        metrics['accuracy_global'] += accurate_t * accurate_pitch * accurate_dT
-
-    def test(self, data, smoothing=True, smoothing_lambda=0.05):
-        """
-        Computes metrics on test set data
-        :param data: unrolled dataset
-        :return: a dictionary of metrics
-        """
-        metrics = {
-            'LL_dT': 0., 'LL_t': 0., 'LL_pitch': 0., 'LL_global': 0.,
-            'accuracy_dT': 0., 'accuracy_t': 0., 'accuracy_pitch': 0., 'accuracy_global': 0.,
-            'fall_dT': 0., 'fall_t': 0., 'fall_pitch': 0.
-        }
-        total_length = 0
-        for song in data:
-            total_length += len(song)//3
-            for i in xrange(0, len(song), 3):
-                hist = song[max(0,i-self.order):i]
-                x = (song[i], song[i+1], song[i+2])
-                self.testNote(hist, x, metrics, smoothing, smoothing_lambda)
-
-        for key in metrics:
-            metrics[key] /= total_length
-
-        return metrics
-
-    def generate_data(self, seed=[0], n_songs=20, N=599, write_MIDI=False, dictionaries=None):
-        """
-        :param seed:
+        Generate a dataset of songs
+        :param n_songs: number of songs
+        :param N: length of a song
+        :param write_MIDI: write the songs to disk
+        :param dictionaries: mapping from integers to note values, has to be set if write_MIDI is True
         :return:
         """
         dataset = {'dTseqs': [], 'tseqs': [], 'pitchseqs': []}
         for i in range(n_songs):
-            song = self.postprocess(self.generate_song(seed, N))
+            song = self.postprocess(self.generate_song(N*3))
             dataset['dTseqs'].append(song['dTseqs'])
             dataset['tseqs'].append(song['tseqs'])
             dataset['pitchseqs'].append(song['pitchseqs'])
             if write_MIDI:
                 dtseq, tseq, pseq = toMIDI(song['dTseqs'], song['tseqs'], song['pitchseqs'], dictionaries)
-                writeMIDI(dtseq, tseq, pseq, path='../data/generated',
+                writeMIDI(dtseq, tseq, pseq, path=path,
                           label='fungram-order'+str(self.order)+'-'+str(i))
 
         return dataset
 
-    def generate_song(self, seed=[0], N=599):
+    def generate_song(self, N=600, seed=None):
         """
-        :param seed:
-        :return:
+        DO NOT USE OUT OF THE CLASS: not a standard format
         """
-        assert (N+len(seed)) % 3 == 0
-        ret = seed[:]
-        for i in range(N):
+        assert N%3 == 0
+        if seed is not None:
+            ret = seed[:]
+        else:
+            ret = [0]
+
+        for i in range(len(ret), N):
             hist = ret[max(0, i-self.order):]
-            distr = self.predict(hist)
-            ret.append(int(dic_sample(distr)))
+            distr = self.predictValue(hist)
+            ret.append(dic_sample(distr))
         return ret
 
     def postprocess(self, seq):
-        song = {'dTseqs':[], 'tseqs':[], 'pitchseqs':[]}
+        """
+        Converts from unrolled sequence format to a dictionary of 3 sequences (dTseqs, tseqs, pitchseqs)
+        """
+        song = {'dTseqs': [], 'tseqs': [], 'pitchseqs': []}
         for i,elt in enumerate(seq):
             if i%3 == 0:
                 song['dTseqs'].append(elt)
