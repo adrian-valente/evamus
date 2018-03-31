@@ -38,4 +38,5 @@ In practice, a dataset contains 3 layers:
 - First it is a dictionary containing 3 keys: "dTseqs", "tseqs", "pitchseqs".
 - Each key maps to a sequence of songs
 - Each song being a sequence of values (floats) 
-Note how each song is dispersed into the 3 buckets of the dictionary: for instance, dataset["dTseqs"][0], dataset["tseqs"][0] and dataset["pitchseqs"][0] are sequences having the same length and representing the 3 features in the same song.
+
+Note how each song is dispersed into the 3 buckets of the dictionary: for instance, `dataset["dTseqs"][0]`, `dataset["tseqs"][0]` and `dataset["pitchseqs"][0]` are sequences having the same length and representing the 3 features in the same song.
