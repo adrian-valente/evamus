@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from collections import defaultdict
 from math import log
 from tools import dic_argmax
@@ -64,15 +65,17 @@ def plot_metric(metrics, metric, title="", uniform=None):
     y = []
     yerr = []
     c = []
+    handles = []
     i = 0
 
     for model in metrics:
         if 'train' in metrics[model] and metric in metrics[model]['train']:
-            keys.append(model+'-train')
+            keys.append('train')
             y.append(np.mean(metrics[model]['train'][metric]))
             yerr.append(np.std(metrics[model]['train'][metric]))
             c.append('C'+str(i)[-1])
-            keys.append(model + '-test')
+            handles.append(mpatches.Patch(color=c[-1], label=model))
+            keys.append('test')
             y.append(np.mean(metrics[model]['test'][metric]))
             yerr.append(np.std(metrics[model]['test'][metric]))
             c.append('C' + str(i)[-1])
@@ -82,13 +85,17 @@ def plot_metric(metrics, metric, title="", uniform=None):
             y.append(np.mean(metrics[model][metric]))
             yerr.append(np.std(metrics[model][metric]))
             c.append('C' + str(i)[-1])
+            handles.append(mpatches.Patch(color=c[-1], label=model))
             i += 1
 
     x_i = np.arange(len(y))
 
-    plt.xticks(x_i, keys)
-    plt.title(title)
+    plt.figure(figsize=(10,7))
+
+    plt.xticks(x_i, keys, fontsize=20)
+    plt.title(title, size='xx-large')
     plt.bar(x_i, y, yerr=yerr, color=c)
+    plt.legend(handles=handles, fontsize=20)
     if uniform is not None:
         plt.axhline(uniform, color='red', alpha=0.5)
 
@@ -184,7 +191,7 @@ def compute_metrics(predictions, data):
     return d
 
 
-def analyze_chords(real_data, gen_data):
+def analyze_chords(real_data, gen_data, title_prefix="Chord decomposition"):
     real_dis = defaultdict(float)
     gen_dis = defaultdict(float)
 
@@ -198,7 +205,7 @@ def analyze_chords(real_data, gen_data):
                     real_dis[diff] += 1
                 cur_chord.add(p)
             else:
-                cur_chord = set()
+                cur_chord = {real_data['pitchseqs'][s][i]}
 
     for s, song in enumerate(gen_data['dTseqs']):
         cur_chord = set()
@@ -210,23 +217,33 @@ def analyze_chords(real_data, gen_data):
                     gen_dis[diff] += 1
                 cur_chord.add(p)
             else:
-                cur_chord = set()
+                cur_chord = {gen_data['pitchseqs'][s][i]}
 
     print real_dis
 
     keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
     idx = np.arange(len(keys))
-    plt.xticks(idx, keys)
 
-    ax = plt.subplot(211)
-    ax.bar(idx, [real_dis[k] for k in keys])
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8,8))
+    fig.suptitle(title_prefix+" - chords decomposition", size='x-large')
 
-    ax = plt.subplot(212)
-    ax.bar(idx, [gen_dis[k] for k in keys])
-    plt.show()
+    ax1.bar(idx, [real_dis[k] for k in keys])
+    ax1.set_title("Real distribution", size='xx-large')
+    ax1.set_xticks(idx, keys)
+    ax1.set_xlabel("interval", fontsize=14)
+    ax1.set_ylabel("number of samples", fontsize=14)
+
+    ax2.bar(idx, [gen_dis[k] for k in keys])
+    ax2.set_title(title_prefix+" - Generated distribution", size='xx-large')
+    ax2.set_xticks(idx, keys)
+    ax2.set_xlabel("interval", fontsize=14)
+    ax2.set_ylabel("number of samples", fontsize=14)
+
+    fig.subplots_adjust(hspace=0.5)
+    fig.show()
 
 
-def analyze_intervals(real_data, gen_data):
+def analyze_intervals(real_data, gen_data, title="Interval decomposition"):
     real_dis = defaultdict(float)
     gen_dis = defaultdict(float)
 
@@ -246,12 +263,54 @@ def analyze_intervals(real_data, gen_data):
 
     keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
     idx = np.arange(len(keys))
-    plt.xticks(idx, keys)
 
-    ax = plt.subplot(211)
-    ax.bar(idx, [real_dis[k] for k in keys])
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+    fig.suptitle(title, size='x-large')
 
-    ax = plt.subplot(212)
-    ax.bar(idx, [gen_dis[k] for k in keys])
-    plt.show()
+    ax1.bar(idx, [real_dis[k] for k in keys])
+    ax1.set_title("Real distribution", size='medium')
+    ax1.set_xticks(idx, keys)
+
+    ax2.bar(idx, [gen_dis[k] for k in keys])
+    ax2.set_title("Generated distribution", size='medium')
+    ax2.set_xticks(idx, keys)
+
+    fig.subplots_adjust(hspace=0.5)
+    fig.show()
+
+
+def analyze_transitions_singletype(real_seqs, gen_seqs, size, title, seqname):
+    transitions_real = np.zeros((size, size))
+    for song in real_seqs:
+        for i in range(len(song) - 1):
+            transitions_real[song[i], song[i + 1]] += 1
+
+    transitions_gen = np.zeros((size, size))
+    for song in gen_seqs:
+        for i in range(len(song) - 1):
+            transitions_gen[song[i], song[i + 1]] += 1
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+    fig.suptitle(title, size='xx-large', y=1.04)
+    ax1.matshow(transitions_real)
+    ax1.set_title("Real distribution", fontsize=25)
+    ax1.set_xlabel("$"+seqname+"_i$", fontsize=25)
+    ax1.set_ylabel("$"+seqname+"_{i+1}$", fontsize=25)
+    ax2.matshow(transitions_gen)
+    ax2.set_title("Generated distribution", size="xx-large")
+    ax2.set_xlabel("$"+seqname+"_i$", fontsize=25)
+    ax2.set_ylabel("$"+seqname+"_{i+1}$", fontsize=25)
+    fig.show()
+
+
+def analyze_transitions(real_data, gen_data, sizes, title_prefix=""):
+    analyze_transitions_singletype(real_data["pitchseqs"], gen_data["pitchseqs"], sizes[2],
+                                   title_prefix+"Transition probabilites for pitch", seqname="p")
+    analyze_transitions_singletype(real_data["dTseqs"], gen_data["dTseqs"], sizes[0],
+                                   title_prefix+"Transition probabilities for dT", seqname="dT")
+    analyze_transitions_singletype(real_data["tseqs"], gen_data["tseqs"], sizes[1],
+                                   title_prefix+"Transition probabilities for T", seqname="T")
+
+
+
 

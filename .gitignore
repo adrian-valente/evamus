@@ -4,4 +4,4 @@
 *.pyc
 **/.DS_Store
 .idea/**
-
+/mid-soutenance/**

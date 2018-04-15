@@ -1,11 +1,18 @@
 from utils.midiparser import getDictionaries, parseFolder, cleanDic, writeMIDI
 
+
 def preprocess(datapath, writeMIDI=False):
     """
-    Parses a datapath and returns a preprocessed dataset, either splitted or not
-    :param datapath:
-    :param writeMIDI:
-    :return:
+    Parses a datapath and returns a preprocessed dataset, along with essential information
+    :param datapath: path to a folder containing MIDI files
+    :param writeMIDI: if true, write preprocessed midi (single channel, discretized rythm) as midi files again
+    :return: - the dataset in standard format
+             - a triple (dTvocsize, Tvocsize, pitchvocsize) giving the size of the vocabulary for each sequence type,
+             - a dictionary of mappings from Z to the corresponding pitches/rythms : it contains 5 sequences ('dtseqs',
+             'Tseqs', 'duration_text', 'pitch_text', 'pitchseqs') such that 'dtseqs', 'tseqs' contain for each
+             index in Z the corresponding rythm as decimal number and 'duration_text' is the same sequence with
+             the rythms in fractional notation, and 'pitchseqs' contains for each integer in Z the corresponding pitch
+             as a midi integer and 'pitch_text' is the same sequence with the pitches in musical notation.
     """
     dictionaries = getDictionaries()
     dataset = parseFolder(datapath, dictionaries)
@@ -41,7 +48,6 @@ def split(dataset, k):
     return ret
 
 
-
 def transpose(pitch_seq):
     upperbound = max(pitch_seq)
     lowerbound = min(pitch_seq)
@@ -58,7 +64,7 @@ def toZ(data, dictionaries):
     Tvocsize = len(dictionaries["Tseqs"])
     pitchvocsize = len(dictionaries["pitchseqs"])
 
-    ## Translate
+    # Translate
 
     xdT = []
     xP = []
