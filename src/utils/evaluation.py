@@ -310,7 +310,3 @@ def analyze_transitions(real_data, gen_data, sizes, title_prefix=""):
                                    title_prefix+"Transition probabilities for dT", seqname="dT")
     analyze_transitions_singletype(real_data["tseqs"], gen_data["tseqs"], sizes[1],
                                    title_prefix+"Transition probabilities for T", seqname="T")
-
-
-
-
