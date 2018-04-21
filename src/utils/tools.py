@@ -1,6 +1,13 @@
 from collections import defaultdict
 from random import random
 
+
+def getSong(dataset, i):
+    return {"dTseqs": dataset["dTseqs"][i],
+            "tseqs": dataset["tseqs"][i],
+            "pitchseqs": dataset["pitchseqs"][i]}
+
+
 def normalize(d):
     """
     Returns a normalized version of the dictionary d
