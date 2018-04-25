@@ -154,13 +154,18 @@ def accuracies(predictions, data):
 
     for s in range(len(data["dTseqs"])):
         l = len(data["dTseqs"][s])
-        total_length += l
+        total_length += l-1  #note: we ignore first note
 
-        for i in range(l):
+        for i in range(1,l):
             dT, t, p = data["dTseqs"][s][i], data["tseqs"][s][i], data["pitchseqs"][s][i]
-            good_dT = 1 if (dic_argmax(predictions["dTseqs"][s][i]) == dT) else 0
-            good_t = 1 if (dic_argmax(predictions["tseqs"][s][i]) == t) else 0
-            good_p = 1 if (dic_argmax(predictions["pitchseqs"][s][i]) == p) else 0
+            if isinstance(predictions["dTseqs"][s][i], dict):
+                good_dT = 1 if (dic_argmax(predictions["dTseqs"][s][i]) == dT) else 0
+                good_t = 1 if (dic_argmax(predictions["tseqs"][s][i]) == t) else 0
+                good_p = 1 if (dic_argmax(predictions["pitchseqs"][s][i]) == p) else 0
+            elif isinstance(predictions["dTseqs"][s][i], list):
+                good_dT = 1 if (np.argmax(predictions["dTseqs"][s][i]) == dT) else 0
+                good_t = 1 if (np.argmax(predictions["tseqs"][s][i]) == t) else 0
+                good_p = 1 if (np.argmax(predictions["pitchseqs"][s][i]) == p) else 0
 
             adT += good_dT
             at += good_t

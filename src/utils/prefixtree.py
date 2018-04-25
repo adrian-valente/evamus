@@ -1,3 +1,15 @@
+"""
+This file defines the tool PrefixTree, that can be used to compute the longest common subsequence
+between two sequences.
+To use:
+
+pt = PrefixTree(song)
+lcs = longest_common_subsequence(song)
+
+Note that the input songs will be in standard format (a dict of "dTseqs", etc)
+while the returned LCS will be a sequence of tuples (dT[i], T[i], P[i])
+"""
+
 class PrefixTree:
     """
     :attr root: TreeNode

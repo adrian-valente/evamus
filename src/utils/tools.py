@@ -3,6 +3,9 @@ from random import random
 
 
 def getSong(dataset, i):
+    """
+    return song i of the dataset
+    """
     return {"dTseqs": dataset["dTseqs"][i],
             "tseqs": dataset["tseqs"][i],
             "pitchseqs": dataset["pitchseqs"][i]}
