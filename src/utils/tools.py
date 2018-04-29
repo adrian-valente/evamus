@@ -80,3 +80,12 @@ def keys_subtract(d, x):
     for k in d:
         res[k-x] = d[k]
     return res
+
+def tvDistance(p, q):
+    """
+    total variation distance
+    """
+    res = 0.
+    for key in set(p.keys()).union(set(q.keys())):
+        res += abs(p[key] - q[key])
+    return 0.5 * res

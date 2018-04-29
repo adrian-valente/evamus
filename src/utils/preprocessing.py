@@ -8,8 +8,8 @@ def preprocess(datapath, writeMIDI=False):
     :param writeMIDI: if true, write preprocessed midi (single channel, discretized rythm) as midi files again
     :return: - the dataset in standard format
              - a triple (dTvocsize, Tvocsize, pitchvocsize) giving the size of the vocabulary for each sequence type,
-             - a dictionary of mappings from Z to the corresponding pitches/rythms : it contains 5 sequences ('dtseqs',
-             'Tseqs', 'duration_text', 'pitch_text', 'pitchseqs') such that 'dtseqs', 'tseqs' contain for each
+             - a dictionary of mappings from Z to the corresponding pitches/rythms : it contains 5 sequences ('dTseqs',
+             'Tseqs', 'duration_text', 'pitch_text', 'pitchseqs') such that 'dTseqs', 'tseqs' contain for each
              index in Z the corresponding rythm as decimal number and 'duration_text' is the same sequence with
              the rythms in fractional notation, and 'pitchseqs' contains for each integer in Z the corresponding pitch
              as a midi integer and 'pitch_text' is the same sequence with the pitches in musical notation.
@@ -23,8 +23,8 @@ def preprocess(datapath, writeMIDI=False):
     if writeMIDI:
         dtseq, Tseq, pitchseq = toMIDI(xdTs[0], xTs[0], xPs[0], dictionaries)
         for dt, t, p in zip(dtseq, Tseq, pitchseq):
-            print(dictionaries['duration_text'][dictionaries['dtseqs'].index(dt)],
-                  dictionaries['duration_text'][dictionaries['Tseqs'].index(t)],
+            print(dictionaries['duration_text'][dictionaries['dTseqs'].index(dt)],
+                  dictionaries['duration_text'][dictionaries['tseqs'].index(t)],
                   dictionaries['pitch_text'][dictionaries['pitchseqs'].index(p)])
         writeMIDI(dtseq, Tseq, pitchseq, path='../data/', label='example')
 
@@ -33,7 +33,7 @@ def preprocess(datapath, writeMIDI=False):
 
 def split(dataset, k):
     """
-    :param dataset: a dictionary of list of sequences containing the lists 'dtseqs', 'Tseqs', 'pitchseq'
+    :param dataset: a dictionary of list of sequences containing the lists 'dtseqs', 'tseqs', 'pitchseq'
     :param k: the number of folds
     :return: a list of dictionaries {'train':, 'test':} where train and test have the same format as dataset
     (note: train and test are views, and not copies of the original dataset)
@@ -48,20 +48,20 @@ def split(dataset, k):
     return ret
 
 
-def transpose(pitch_seq):
-    upperbound = max(pitch_seq)
-    lowerbound = min(pitch_seq)
-    possible_shifts = range(0 - lowerbound, pitchvocsize - upperbound)
-    if len(possible_shifts) == 0:
-        possible_shifts.append(0)
-    shift = np.random.choice(possible_shifts)
-    out = [x + shift for x in pitch_seq]
-    return out
+# def transpose(pitch_seq):
+#     upperbound = max(pitch_seq)
+#     lowerbound = min(pitch_seq)
+#     possible_shifts = range(0 - lowerbound, pitchvocsize - upperbound)
+#     if len(possible_shifts) == 0:
+#         possible_shifts.append(0)
+#     shift = np.random.choice(possible_shifts)
+#     out = [x + shift for x in pitch_seq]
+#     return out
 
 
 def toZ(data, dictionaries):
-    dTvocsize = len(dictionaries["dtseqs"])
-    Tvocsize = len(dictionaries["Tseqs"])
+    dTvocsize = len(dictionaries["dTseqs"])
+    Tvocsize = len(dictionaries["tseqs"])
     pitchvocsize = len(dictionaries["pitchseqs"])
 
     # Translate
@@ -69,9 +69,9 @@ def toZ(data, dictionaries):
     xdT = []
     xP = []
     xT = []
-    for dTseq, Tseq, pitchseq in zip(data["dtseqs"], data["Tseqs"], data["pitchseqs"]):
-        dTs = [dictionaries["dtseqs"].index(x) for x in dTseq]
-        Ts = [dictionaries["Tseqs"].index(x) for x in Tseq]
+    for dTseq, Tseq, pitchseq in zip(data["dTseqs"], data["tseqs"], data["pitchseqs"]):
+        dTs = [dictionaries["dTseqs"].index(x) for x in dTseq]
+        Ts = [dictionaries["tseqs"].index(x) for x in Tseq]
         vs = [dictionaries["pitchseqs"].index(x) for x in pitchseq]
 
         xdT.append(dTs)
@@ -82,22 +82,22 @@ def toZ(data, dictionaries):
 
 
 def toMIDI(xdT, xT, xP, dictionaries):
-    dT = [dictionaries["dtseqs"][x] for x in xdT]
-    T = [dictionaries["Tseqs"][x] for x in xT]
+    dT = [dictionaries["dTseqs"][x] for x in xdT]
+    T = [dictionaries["tseqs"][x] for x in xT]
     P = [dictionaries["pitchseqs"][x] for x in xP]
 
     return dT, T, P
 
 
-def sortbylength(data):
-    idxes = np.argsort([len(x) for x in data["dtseqs"]])
-    data["dtseqs"] = list(np.asarray(data["dtseqs"])[idxes])
-    data["Tseqs"] = list(np.asarray(data["Tseqs"])[idxes])
-    data["pitchseqs"] = list(np.asarray(data["pitchseqs"])[idxes])
+# def sortbylength(data):
+#     idxes = np.argsort([len(x) for x in data["dTseqs"]])
+#     data["dTseqs"] = list(np.asarray(data["dTseqs"])[idxes])
+#     data["tseqs"] = list(np.asarray(data["tseqs"])[idxes])
+#     data["pitchseqs"] = list(np.asarray(data["pitchseqs"])[idxes])
 
-    return data
+#     return data
 
 
-def augment(xdTs, xTs, xPs):
-    for xdT, xT, xP in zip(xdTs, xTs, xPs):
-        transpose(xP)
+# def augment(xdTs, xTs, xPs):
+#     for xdT, xT, xP in zip(xdTs, xTs, xPs):
+#         transpose(xP)

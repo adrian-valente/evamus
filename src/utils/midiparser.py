@@ -90,8 +90,8 @@ def parseMIDIfile(pathtofile, dictionaries, verbose=False):
         except AttributeError:
             print("Warning: maybe unrecognized event", event)
             return None
-        except:
-            print("Warning: ")
+        except Exception as err:
+            print("Error: ", err)
             return None
 
     return myrepr["dt"], myrepr["T"], myrepr["p"]
@@ -123,7 +123,7 @@ def takeClosest(myNumber, myList):
         return before
 
 
-def parseFolder(datapath, dictionaries):
+def parseFolder(datapath, dictionaries, verbose=False):
     DTs = []
     Ts = []
     Ps = []
@@ -132,28 +132,26 @@ def parseFolder(datapath, dictionaries):
         try:
             if filename[-4:] in [".MID", ".mid", ".squ"]:
                 name = filename[:-4]
-                print("Processing " + name)
+                if verbose:
+                    print("Processing " + datapath + filename)
                 res = parseMIDIfile(datapath + filename, dictionaries)
                 if res is not None:
                     dtseq, Tseq, pitchseq = res
-                    # dtseq.append("END")
-                    # Tseq.append("END")
-                    # pitchseq.append("END")
                     DTs.append(dtseq)
                     Ts.append(Tseq)
                     Ps.append(pitchseq)
-                else:
+                elif verbose:
                     print("-->skipped")
-        except Warning:
-            print("-->skipped")
+        except Warning as err:
+            print("Warning: {}".format(err))
             continue
         except KeyboardInterrupt:
             break
-        except:
-            print("-->skipped")
+        except Exception as err:
+            print("Error: {}".format(err))
             continue
 
-    return {"dtseqs": DTs, "Tseqs": Ts, "pitchseqs": Ps}
+    return {"dTseqs": DTs, "tseqs": Ts, "pitchseqs": Ps}
 
 
 def getDictionaries():
@@ -231,11 +229,12 @@ def writeMIDI(dtseq, Tseq, pitchseq, path="", label="", tag="retrieved", resolut
     return pattern
 
 
-def cleanDic(data, dictionaries, clean=False):
-    out = {"pitchseqs": [], "dtseqs": [], "Tseqs": [], "duration_text": [], "pitch_text": []}
+def cleanDic(data, dictionaries, clean=False, verbose=False):
+    out = {"pitchseqs": [], "dTseqs": [], "tseqs": [], "duration_text": [], "pitch_text": []}
     for key, value in data.iteritems():
         flatten = [item for song in value for item in song[:-1]]
-        print("########--" + key + "--#########")
+        if verbose:
+            print("########--" + key + "--#########")
 
         if key == 'pitchseqs':
             if clean:
@@ -253,7 +252,8 @@ def cleanDic(data, dictionaries, clean=False):
             # out["pitch_text"] = dictionaries["pitch_text"]
             for x, t in zip(out[key], out["pitch_text"]):
                 count = flatten.count(x)
-                print(x, t, count)
+                if verbose:
+                    print(x, t, count)
         else:
             for x, t in zip(dictionaries["duration"], dictionaries["duration_text"]):
                 count = flatten.count(x)
@@ -261,11 +261,13 @@ def cleanDic(data, dictionaries, clean=False):
                     out[key].append(x)
                     if t not in out["duration_text"]:
                         out["duration_text"].append(t)
-                print(x, t, count)
+                if verbose:
+                    print(x, t, count)
             if not clean:
                 out[key] = dictionaries["duration"]
 
-        print("Dim: ", len(out[key]))
+        if verbose:
+            print("Dim: ", len(out[key]))
 
     if not clean:
         out["duration_text"] = dictionaries["duration_text"]

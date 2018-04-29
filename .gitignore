@@ -8,4 +8,10 @@
 src/utils/sequenceCounter.py
 /papers/**
 /src/testzone/**
-
+src/Analyze7.ipynb
+src/Experimental1.ipynb
+src/Experimental2.ipynb
+src/Untitled.ipynb
+src/models/BachProp7.py
+src/models/PretrainedBachProp7.py
+src/models/model.hdf5

@@ -8,16 +8,19 @@ from midiparser import writeMIDI
 from preprocessing import toMIDI
 
 
-def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, motif_size_lcn=32, motif_size_best=8, path="gen/", corpus2Name="no_name", dictionaries=None):
+def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="../data/lcs/", corpus2Name="no_name", dictionaries=None, plot=True):
     """
     Make a quick analysis of the novelty profile of corpus2 with respect to corpus1
-    :attr corpus1: a dataset-formatted corpus
-    :attr corpus2: idem
-    :attr motifs: (a sequence of ints) motif sizes to consider
-    :attr auto: pre-computed auto novelty of corpus1
-    :attr path: path where to write longest common subsequences
-    :attr dictionaries: dictionaries mapping back to MIDI (for writing LCSs)
+    :param corpus1: a dataset-formatted corpus
+    :param corpus2: idem
+    :param motifs: (a sequence of ints) motif sizes to consider
+    :param auto: pre-computed auto novelty of corpus1
+    :param path: path where to write longest common subsequences
+    :param corpus2Name:
+    :param dictionaries: dictionaries mapping back to MIDI (for writing LCSs)
+    :param plot: whether to plot novelty violinplot
     """
+    print("Novelty analysis with motif sizes {}".format(motifs))
     N1 = len(corpus1["dTseqs"])
 
     novelties = novelty(corpus1, corpus2, motifs)
@@ -26,35 +29,40 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, motif_si
         auto = autonovelty(corpus1)
 
     # Make a plot
-    df = pd.DataFrame({'value': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "auto-novelty"})
-    df2 = pd.DataFrame({'value': novelties.ravel(),
-                        'motif-size': motifs * novelties.shape[0],
-                        'model': corpus2Name})
-    df = pd.concat([df, df2])
+    if plot:
+        df = pd.DataFrame({'value': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "auto-novelty"})
+        df2 = pd.DataFrame({'value': novelties.ravel(),
+                            'motif-size': motifs * novelties.shape[0],
+                            'model': corpus2Name})
+        df = pd.concat([df, df2])
 
-    plt.subplots(figsize=(10, 7))
-    sns.violinplot(data=df, x="motif-size", y="value", hue="model")
+        plt.subplots(figsize=(10, 7))
+        sns.violinplot(data=df, x="motif-size", y="value", hue="model")
 
-    # Find 5 less original songs
-    assert motif_size_lcn in motifs
-    worse = np.argsort(novelties[:, motifs.index(motif_size_lcn)])[:5]
-    print("Less original songs (at motif size {}):".format(motifs[-1]))
+    # Find 5 less original songs (for a mean of novelties)
+    worse = np.argsort(novelties.mean(axis=1))[:5]
+    print worse
+    print(novelties)
+    print("Less original songs")
     for i in worse:
-        print("Generated song {}, novelty {}".format(i, novelties[i,-1]))
+        print("Generated song {}, novelties {}".format(i, novelties[i,:]))
 
         # Find corpus1's most similar song
         song = getSong(corpus2, i)
         lenSong = len(song["dTseqs"])
-        sets = compute_sets_single_song(song, [motif_size_lcn])
+        sets = compute_sets_single_song(song, motifs)
         curMax = 0.
         curArgmax = 0
         # for each song of the corpus1, compute similarity with currently studied song
         for s in range(N1):
-            nov = compare_to_sets_single_song(getSong(corpus1, s), [motif_size_lcn], sets)
-            coincidences = (1. - nov) * (len(corpus1["dTseqs"][s]) - motif_size_lcn + 1)  #renormalization
-            real_sim = coincidences / (lenSong - motif_size_lcn + 1)
-            if real_sim > curMax:
-                curMax = real_sim
+            nov = compare_to_sets_single_song(getSong(corpus1, s), motifs, sets)
+            sim = np.zeros(nov.shape)
+            for j,motif in enumerate(motifs):
+                coincidences = (1. - nov[j]) * (len(corpus1["dTseqs"][s]) - motif + 1)  #renormalization
+                sim[j] = coincidences / (lenSong - motif + 1)  # get similarity
+            sim_mean = np.mean(sim)
+            if sim_mean > curMax:
+                curMax = sim[j]
                 curArgmax = s
         print("This song is very similar to song {} of the corpus: similarity {}".format(curArgmax, curMax))
 
@@ -68,14 +76,15 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, motif_si
             print("longest common subsequence of length {} written to disk".format(len(lcs)))
 
     # Get 5 most original songs (here wrt motif size #2)
-    assert motif_size_best in motifs
-    best = np.argsort(novelties[:,motifs.index(motif_size_best)])[-5:]
-    print("Most original songs at motif size {}:".format(motif_size_best))
+    best = np.argsort(novelties.mean(axis=1))[-5:]
+    print("Most original songs")
     for i in best[::-1]:
-        print("Generated song {} : novelty {}".format(i, novelties[i, 2]))
+        print("Generated song {} : novelties {}".format(i, novelties[i, :]))
+
+    return novelties
 
 
-def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32), auto=None):
+def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32), auto=None, plot=True):
     """
     Computes novelties for each of the datasets against ref_dataset, and plots a violinplot
     :param auto: optional precomputed autonovelty (with for example test vs train measure if desired)
@@ -89,8 +98,11 @@ def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32),
                                       'model': names[i]})
     df = pd.concat(dfs)
 
-    plt.subplots(figsize=(10,7))
-    sns.violinplot(data=df, x='motif-size', y='value', hue='model')
+    if plot:
+        plt.subplots(figsize=(10,7))
+        sns.violinplot(data=df, x='motif-size', y='value', hue='model')
+    
+    return df
 
 
 

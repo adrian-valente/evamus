@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from collections import defaultdict
 from math import log
-from tools import dic_argmax
+from tools import dic_argmax, normalize, tvDistance
 
 import matplotlib.style
 matplotlib.style.use('ggplot')
@@ -196,21 +196,37 @@ def compute_metrics(predictions, data):
     return d
 
 
-def analyze_chords(real_data, gen_data, title_prefix="Chord decomposition"):
-    real_dis = defaultdict(float)
-    gen_dis = defaultdict(float)
-
-    for s, song in enumerate(real_data['dTseqs']):
+def preanalysis_chords(data):
+    distr = defaultdict(float)
+    for s, song in enumerate(data['dTseqs']):
         cur_chord = set()
         for i, dT in enumerate(song):
             if dT == 0:
-                p = real_data['pitchseqs'][s][i]
+                p = data['pitchseqs'][s][i]
                 for x in cur_chord:
                     diff = abs(p-x) % 12
-                    real_dis[diff] += 1
+                    distr[diff] += 1
                 cur_chord.add(p)
             else:
-                cur_chord = {real_data['pitchseqs'][s][i]}
+                cur_chord = {data['pitchseqs'][s][i]}
+    return distr
+
+def analyze_chords(real_data, gen_data, title_prefix="Chord decomposition", real_dis=None, plot=True):
+    gen_dis = defaultdict(float)
+
+    if real_dis is None:
+        real_dis = defaultdict(float)
+        for s, song in enumerate(real_data['dTseqs']):
+            cur_chord = set()
+            for i, dT in enumerate(song):
+                if dT == 0:
+                    p = real_data['pitchseqs'][s][i]
+                    for x in cur_chord:
+                        diff = abs(p-x) % 12
+                        real_dis[diff] += 1
+                    cur_chord.add(p)
+                else:
+                    cur_chord = {real_data['pitchseqs'][s][i]}
 
     for s, song in enumerate(gen_data['dTseqs']):
         cur_chord = set()
@@ -224,64 +240,99 @@ def analyze_chords(real_data, gen_data, title_prefix="Chord decomposition"):
             else:
                 cur_chord = {gen_data['pitchseqs'][s][i]}
 
-    print real_dis
+    if plot:
+        keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
+        idx = np.arange(len(keys))
 
-    keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
-    idx = np.arange(len(keys))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8,8))
+        fig.suptitle(title_prefix+" - chords decomposition", size='x-large')
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8,8))
-    fig.suptitle(title_prefix+" - chords decomposition", size='x-large')
+        ax1.bar(idx, [real_dis[k] for k in keys])
+        ax1.set_title("Real distribution", size='xx-large')
+        ax1.set_xticks(idx, keys)
+        ax1.set_xlabel("interval", fontsize=14)
+        ax1.set_ylabel("number of samples", fontsize=14)
 
-    ax1.bar(idx, [real_dis[k] for k in keys])
-    ax1.set_title("Real distribution", size='xx-large')
-    ax1.set_xticks(idx, keys)
-    ax1.set_xlabel("interval", fontsize=14)
-    ax1.set_ylabel("number of samples", fontsize=14)
+        ax2.bar(idx, [gen_dis[k] for k in keys])
+        ax2.set_title(title_prefix+" - Generated distribution", size='xx-large')
+        ax2.set_xticks(idx, keys)
+        ax2.set_xlabel("interval", fontsize=14)
+        ax2.set_ylabel("number of samples", fontsize=14)
 
-    ax2.bar(idx, [gen_dis[k] for k in keys])
-    ax2.set_title(title_prefix+" - Generated distribution", size='xx-large')
-    ax2.set_xticks(idx, keys)
-    ax2.set_xlabel("interval", fontsize=14)
-    ax2.set_ylabel("number of samples", fontsize=14)
+        fig.subplots_adjust(hspace=0.5)
+        fig.show()
+    
+    # Compute statistical distance
+    real_dis = normalize(real_dis)
+    gen_dis = normalize(gen_dis)
+    return tvDistance(real_dis, gen_dis)
 
-    fig.subplots_adjust(hspace=0.5)
-    fig.show()
+def preanalysis_intervals(data):
+    distr = defaultdict(float)
+    for s, song in enumerate(data['dTseqs']):
+        cur_chord = set()
+        for i, dT in enumerate(song):
+            if dT == 0:
+                cur_chord.add(data['pitchseqs'][s][i])
+            else:
+                p = data['pitchseqs'][s][i]
+                for x in cur_chord:
+                    diff = abs(x-p) % 12
+                    distr[diff] += 1
+                cur_chord = {data['pitchseqs'][s][i]}
+    return distr
 
-
-def analyze_intervals(real_data, gen_data, title="Interval decomposition"):
-    real_dis = defaultdict(float)
+def analyze_intervals(real_data, gen_data, title="Interval decomposition", real_dis=None, plot=True):
     gen_dis = defaultdict(float)
 
-    for s, song in enumerate(real_data['dTseqs']):
-        for i, dT in enumerate(song):
-            if dT != 0 and i > 0:
-                diff = abs(real_data['pitchseqs'][s][i] - real_data['pitchseqs'][s][i - 1])%12
-                real_dis[diff] += 1
+    if real_dis is None:
+        real_dis = defaultdict(float)
+        for s, song in enumerate(real_data['dTseqs']):
+            cur_chord = set()
+            for i, dT in enumerate(song):
+                if dT == 0:
+                    cur_chord.add(real_data['pitchseqs'][s][i])
+                else:
+                    p = real_data['pitchseqs'][s][i]
+                    for x in cur_chord:
+                        diff = abs(p-x) % 12
+                        real_dis[diff] += 1
+                    cur_chord = {real_data['pitchseqs'][s][i]}
 
     for s, song in enumerate(gen_data['dTseqs']):
+        cur_chord = set()
         for i, dT in enumerate(song):
-            if dT != 0 and i > 0:
-                diff = abs(gen_data['pitchseqs'][s][i] - gen_data['pitchseqs'][s][i - 1])%12
-                gen_dis[diff] += 1
+            if dT == 0:
+                cur_chord.add(gen_data['pitchseqs'][s][i])
+            else:
+                p = gen_data['pitchseqs'][s][i]
+                for x in cur_chord:
+                    diff = abs(p - x) % 12
+                    gen_dis[diff] += 1
+                cur_chord = {gen_data['pitchseqs'][s][i]}
 
-    print real_dis
+    if plot:
+        keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
+        idx = np.arange(len(keys))
 
-    keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
-    idx = np.arange(len(keys))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        fig.suptitle(title, size='x-large')
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
-    fig.suptitle(title, size='x-large')
+        ax1.bar(idx, [real_dis[k] for k in keys])
+        ax1.set_title("Real distribution", size='medium')
+        ax1.set_xticks(idx, keys)
 
-    ax1.bar(idx, [real_dis[k] for k in keys])
-    ax1.set_title("Real distribution", size='medium')
-    ax1.set_xticks(idx, keys)
+        ax2.bar(idx, [gen_dis[k] for k in keys])
+        ax2.set_title("Generated distribution", size='medium')
+        ax2.set_xticks(idx, keys)
 
-    ax2.bar(idx, [gen_dis[k] for k in keys])
-    ax2.set_title("Generated distribution", size='medium')
-    ax2.set_xticks(idx, keys)
-
-    fig.subplots_adjust(hspace=0.5)
-    fig.show()
+        fig.subplots_adjust(hspace=0.5)
+        fig.show()
+    
+    # Compute statistical distance
+    real_dis = normalize(real_dis)
+    gen_dis = normalize(gen_dis)
+    return tvDistance(real_dis, gen_dis)
 
 
 def analyze_transitions_singletype(real_seqs, gen_seqs, size, title, seqname):
