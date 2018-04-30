@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import pandas as pd
+import seaborn as sns
 from collections import defaultdict
 from math import log
 from tools import dic_argmax, normalize, tvDistance
@@ -196,7 +198,13 @@ def compute_metrics(predictions, data):
     return d
 
 
-def preanalysis_chords(data):
+def preanalysis_chords(data, make_plot=False, plot_fp=None):
+    """
+    Computes the distribution of intervals in chords for data
+    :param make_plot: boolean, whether to realize a plot
+    :param plot_fp: filename where to save the plot
+    :returns: the disribution as a defaultdict (semitones -> frequencies)
+    """
     distr = defaultdict(float)
     for s, song in enumerate(data['dTseqs']):
         cur_chord = set()
@@ -209,9 +217,31 @@ def preanalysis_chords(data):
                 cur_chord.add(p)
             else:
                 cur_chord = {data['pitchseqs'][s][i]}
+    normalize(distr)
+
+    if make_plot:
+        keys = sorted(set(distr.keys()))
+        idx = np.arange(len(keys))
+        fig, ax = plt.subplots() 
+        fig.suptitle("Chords decomposition - real distribution")
+        ax.bar(idx, [distr[k] for k in keys])
+        ax.set_xticks(idx, keys)
+        plt.savefig(plot_fp)
     return distr
 
-def analyze_chords(real_data, gen_data, title_prefix="Chord decomposition", real_dis=None, plot=True):
+
+def analyze_chords(real_data, gen_data, title="Chord decomposition", real_dis=None, 
+                   show_plot=False, plot_fp=None):
+    """
+    Analysis of intervals between notes in a same chord
+    :param real_data: a dataset of the reference corpus (can be None if real_dis is already given)
+    :param gen_data: dataset of studied corpus
+    :param title: title for the plot
+    :param real_dis: if given, the distribution on the reference corpus will not be recomputed
+    :param show_plot: True to directly show plot
+    :param plot_fp: if not None, where to save the plot
+    :returns: total variation distance between the real and the generated distribution
+    """
     gen_dis = defaultdict(float)
 
     if real_dis is None:
@@ -239,99 +269,112 @@ def analyze_chords(real_data, gen_data, title_prefix="Chord decomposition", real
                 cur_chord.add(p)
             else:
                 cur_chord = {gen_data['pitchseqs'][s][i]}
-
-    if plot:
-        keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
-        idx = np.arange(len(keys))
-
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8,8))
-        fig.suptitle(title_prefix+" - chords decomposition", size='x-large')
-
-        ax1.bar(idx, [real_dis[k] for k in keys])
-        ax1.set_title("Real distribution", size='xx-large')
-        ax1.set_xticks(idx, keys)
-        ax1.set_xlabel("interval", fontsize=14)
-        ax1.set_ylabel("number of samples", fontsize=14)
-
-        ax2.bar(idx, [gen_dis[k] for k in keys])
-        ax2.set_title(title_prefix+" - Generated distribution", size='xx-large')
-        ax2.set_xticks(idx, keys)
-        ax2.set_xlabel("interval", fontsize=14)
-        ax2.set_ylabel("number of samples", fontsize=14)
-
-        fig.subplots_adjust(hspace=0.5)
-        fig.show()
     
-    # Compute statistical distance
+    # normalization
     real_dis = normalize(real_dis)
     gen_dis = normalize(gen_dis)
+
+    # Make plot
+    keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
+    fig, ax = plt.subplots()
+    df = pd.DataFrame({'intervals': list(range(12)),
+                       'frequency': [real_dis[i] for i in range(12)],
+                       'distribution': 'real'})
+    df2 = pd.DataFrame({'intervals': list(range(12)),
+                       'frequency': [gen_dis[i] for i in range(12)],
+                       'distribution': 'generated'})
+    df = pd.concat([df, df2])
+    sns.barplot(x='intervals', y='frequency', hue='distribution', data=df, ax=ax)
+    fig.suptitle(title)
+
+    if show_plot:
+        fig.show()
+    elif plot_fp is not None:
+        plt.savefig(plot_fp)
+
+    # Compute statistical distance
     return tvDistance(real_dis, gen_dis)
 
-def preanalysis_intervals(data):
+
+def preanalysis_intervals(data, make_plot=False, plot_fp=None):
+    """
+    Computes the distribution of intervals for all successive notes
+    :param make_plot: boolean, whether to realize a plot
+    :param plot_fp: filename where to save the plot
+    :returns: the disribution as a defaultdict (semitones -> frequencies)
+    """
     distr = defaultdict(float)
+
     for s, song in enumerate(data['dTseqs']):
-        cur_chord = set()
         for i, dT in enumerate(song):
-            if dT == 0:
-                cur_chord.add(data['pitchseqs'][s][i])
-            else:
-                p = data['pitchseqs'][s][i]
-                for x in cur_chord:
-                    diff = abs(x-p) % 12
-                    distr[diff] += 1
-                cur_chord = {data['pitchseqs'][s][i]}
+            if i > 0:
+                diff = abs(data['pitchseqs'][s][i]-p) % 12
+                distr[diff] += 1
+            p = data['pitchseqs'][s][i]             
+
+    if make_plot:
+        keys = sorted(set(distr.keys()))
+        idx = np.arange(len(keys))
+        fig, ax = plt.subplots() 
+        fig.suptitle("Intervals decomposition - Real distribution")
+        ax.bar(idx, [distr[k] for k in keys])
+        ax.set_xticks(idx, keys)
+        plt.savefig(plot_fp)
     return distr
 
-def analyze_intervals(real_data, gen_data, title="Interval decomposition", real_dis=None, plot=True):
+
+def analyze_intervals(real_data, gen_data, title="Interval decomposition", real_dis=None, 
+                      show_plot=False, plot_fp=None):
+    """
+    Analysis of intervals between successive notes
+    :param real_data: a dataset of the reference corpus (can be None if real_dis is already given)
+    :param gen_data: dataset of studied corpus
+    :param title: title for the plot
+    :param real_dis: if given, the distribution on the reference corpus will not be recomputed
+    :param show_plot: True to directly show plot
+    :param plot_fp: if not None, where to save the plot
+    :returns: total variation distance between the real and the generated distribution
+    """
     gen_dis = defaultdict(float)
 
     if real_dis is None:
         real_dis = defaultdict(float)
         for s, song in enumerate(real_data['dTseqs']):
-            cur_chord = set()
             for i, dT in enumerate(song):
-                if dT == 0:
-                    cur_chord.add(real_data['pitchseqs'][s][i])
-                else:
-                    p = real_data['pitchseqs'][s][i]
-                    for x in cur_chord:
-                        diff = abs(p-x) % 12
-                        real_dis[diff] += 1
-                    cur_chord = {real_data['pitchseqs'][s][i]}
+                if i > 0:
+                    diff = abs(real_data['pitchseqs'][s][i]-p) % 12
+                    real_dis[diff] += 1
+                p = real_data['pitchseqs'][s][i]
 
     for s, song in enumerate(gen_data['dTseqs']):
-        cur_chord = set()
         for i, dT in enumerate(song):
-            if dT == 0:
-                cur_chord.add(gen_data['pitchseqs'][s][i])
-            else:
-                p = gen_data['pitchseqs'][s][i]
-                for x in cur_chord:
-                    diff = abs(p - x) % 12
-                    gen_dis[diff] += 1
-                cur_chord = {gen_data['pitchseqs'][s][i]}
+            if i > 0:
+                diff = abs(gen_data['pitchseqs'][s][i]-p) % 12
+                gen_dis[diff] += 1
+            p = gen_data['pitchseqs'][s][i]
 
-    if plot:
-        keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
-        idx = np.arange(len(keys))
-
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
-        fig.suptitle(title, size='x-large')
-
-        ax1.bar(idx, [real_dis[k] for k in keys])
-        ax1.set_title("Real distribution", size='medium')
-        ax1.set_xticks(idx, keys)
-
-        ax2.bar(idx, [gen_dis[k] for k in keys])
-        ax2.set_title("Generated distribution", size='medium')
-        ax2.set_xticks(idx, keys)
-
-        fig.subplots_adjust(hspace=0.5)
-        fig.show()
-    
-    # Compute statistical distance
+    # Normalize
     real_dis = normalize(real_dis)
     gen_dis = normalize(gen_dis)
+
+    # Make plot
+    fig, ax = plt.subplots()
+    df = pd.DataFrame({'intervals': list(range(12)),
+                       'frequency': [real_dis[i] for i in range(12)],
+                       'distribution': 'real'})
+    df2 = pd.DataFrame({'intervals': list(range(12)),
+                       'frequency': [gen_dis[i] for i in range(12)],
+                       'distribution': 'generated'})
+    df = pd.concat([df, df2])
+    sns.barplot(x='intervals', y='frequency', hue='distribution', data=df, ax=ax)
+    fig.suptitle(title)
+
+    if show_plot:
+        fig.show()
+    elif plot_fp is not None:
+        plt.savefig(plot_fp)
+    
+    # Compute statistical distance
     return tvDistance(real_dis, gen_dis)
 
 

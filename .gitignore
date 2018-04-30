@@ -15,3 +15,5 @@ src/Untitled.ipynb
 src/models/BachProp7.py
 src/models/PretrainedBachProp7.py
 src/models/model.hdf5
+**/.vscode
+

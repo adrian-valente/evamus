@@ -8,7 +8,8 @@ from midiparser import writeMIDI
 from preprocessing import toMIDI
 
 
-def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="../data/lcs/", corpus2Name="no_name", dictionaries=None, plot=True):
+def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="../data/lcs/", 
+                     corpus2Name="no_name", dictionaries=None, show_plot=False, plot_fp=None):
     """
     Make a quick analysis of the novelty profile of corpus2 with respect to corpus1
     :param corpus1: a dataset-formatted corpus
@@ -29,20 +30,22 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
         auto = autonovelty(corpus1)
 
     # Make a plot
-    if plot:
-        df = pd.DataFrame({'value': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "auto-novelty"})
-        df2 = pd.DataFrame({'value': novelties.ravel(),
-                            'motif-size': motifs * novelties.shape[0],
-                            'model': corpus2Name})
-        df = pd.concat([df, df2])
-
-        plt.subplots(figsize=(10, 7))
-        sns.violinplot(data=df, x="motif-size", y="value", hue="model")
+    df = pd.DataFrame({'value': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "auto-novelty"})
+    df2 = pd.DataFrame({'value': novelties.ravel(),
+                        'motif-size': motifs * novelties.shape[0],
+                        'model': corpus2Name})
+    df = pd.concat([df, df2])
+    fig, ax = plt.subplots()
+    sns.violinplot(data=df, x="motif-size", y="value", hue="model", ax=ax)
+    fig.suptitle("Novelty comparison of reference dataset and " + corpus2Name)
+    if show_plot:
+        fig.show()
+    elif plot_fp is not None:
+        plt.savefig(plot_fp)
 
     # Find 5 less original songs (for a mean of novelties)
     worse = np.argsort(novelties.mean(axis=1))[:5]
     print worse
-    print(novelties)
     print("Less original songs")
     for i in worse:
         print("Generated song {}, novelties {}".format(i, novelties[i,:]))
