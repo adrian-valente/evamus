@@ -134,7 +134,9 @@ def parseFolder(datapath, dictionaries, verbose=False):
                 name = filename[:-4]
                 if verbose:
                     print("Processing " + datapath + filename)
-                res = parseMIDIfile(datapath + filename, dictionaries)
+                res = None
+                if 'all' not in name:
+                    res = parseMIDIfile(datapath + filename, dictionaries)
                 if res is not None:
                     dtseq, Tseq, pitchseq = res
                     DTs.append(dtseq)
