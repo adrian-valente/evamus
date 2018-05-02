@@ -47,7 +47,8 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("* Total Variation Distance for intervals distribution: {}\n".format(tv_intervals))
         novelties = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
                                           corpus2Name=name, dictionaries=dictionaries, 
-                                          plot_fp=report_path+"novelty_"+name+".png")
+                                          plot_fp=report_path+"novelty_"+name+".png",
+                                          report=report)
         for i,motif in enumerate(motifs):
             report.write("* Mean novelty at size {}: {}\n".format(motif, novelties[:,i].mean()))
 
@@ -56,7 +57,6 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("![](intervals_"+name+".png)\n")
         report.write("![](novelty_"+name+".png)\n")
         report.write("\n\n")
-
 
 
 def key_analysis(dataset, dictionaries, report=None):
