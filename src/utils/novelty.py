@@ -38,7 +38,7 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
                         'model': corpus2Name})
     df = pd.concat([df, df2])
     fig, ax = plt.subplots()
-    sns.violinplot(data=df, x="motif-size", y="value", hue="model", ax=ax)
+    sns.violinplot(data=df, x="motif-size", y="value", hue="model", ax=ax, cut=0)
     fig.suptitle("Novelty comparison of reference dataset and " + corpus2Name)
     if show_plot:
         fig.show()
@@ -123,7 +123,7 @@ def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32),
 
     if plot:
         plt.subplots(figsize=(10,7))
-        sns.violinplot(data=df, x='motif-size', y='value', hue='model')
+        sns.violinplot(data=df, x='motif-size', y='value', hue='model', cut=0)
     
     return df
 
