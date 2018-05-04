@@ -17,7 +17,7 @@ def reduce_dataset(dataset, dictionaries):
 
 
 def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_distr_ref, 
-                        intervals_distr_ref, datapath, dictionaries, motifs=(2,4,8,16,32),
+                        intervals_distr_ref, datapath, dictionaries, motifs=(2,3,4,5,6),
                         report=None, report_path=None):
     if report is None:
         print("Dataset {}: {} songs".format(name, len(dataset["dTseqs"])))
@@ -47,8 +47,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("* Total Variation Distance for intervals distribution: {}\n".format(tv_intervals))
         novelties = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
                                           corpus2Name=name, dictionaries=dictionaries, 
-                                          plot_fp=report_path+"novelty_"+name+".png",
-                                          report=report)
+                                          plot_fp=report_path+"novelty_"+name+".png")
         for i,motif in enumerate(motifs):
             report.write("* Mean novelty at size {}: {}\n".format(motif, novelties[:,i].mean()))
 
@@ -57,6 +56,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("![](intervals_"+name+".png)\n")
         report.write("![](novelty_"+name+".png)\n")
         report.write("\n\n")
+
 
 
 def key_analysis(dataset, dictionaries, report=None):
