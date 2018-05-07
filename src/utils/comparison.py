@@ -1,11 +1,12 @@
 import numpy as np
 from collections import defaultdict
 from midiparser import parseFolder, getDictionaries, cleanDic
-from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals
+from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals, analyze_transitions
 from novelty import autonovelty, novelty_analysis
 from tools import getSong
 from music21Interface import seqs2stream
 from tqdm import tqdm
+
 
 def reduce_dataset(dataset, dictionaries):
     out = dict()
@@ -17,19 +18,19 @@ def reduce_dataset(dataset, dictionaries):
 
 
 def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_distr_ref, 
-                        intervals_distr_ref, datapath, dictionaries, motifs=(2,3,4,5,6),
+                        intervals_distr_ref, sizes, dictionaries, motifs=(2,3,4,5,6),
                         report=None, report_path=None):
     if report is None:
         print("Dataset {}: {} songs".format(name, len(dataset["dTseqs"])))
-        tv_chords,_ = analyze_chords(None, dataset, title="Chords decomposition for model "+name, 
-                                   real_dis=chords_distr_ref, show_plot=True)
+        tv_chords, _ = analyze_chords(None, dataset, title="Chords decomposition for model "+name,
+                                      real_dis=chords_distr_ref, show_plot=True)
         print("Total Variation Distance for chords distribution: {}".format(tv_chords))
-        tv_intervals,_ = analyze_intervals(None, dataset, title="Intervals decomposition for model "+name,
-                                         real_dis=intervals_distr_ref, show_plot=True)
+        tv_intervals, _ = analyze_intervals(None, dataset, title="Intervals decomposition for model "+name,
+                                            real_dis=intervals_distr_ref, show_plot=True)
         print("Total Variation Distance for intervals distribution: {}".format(tv_intervals))
-        novelties,_ = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
-                                     corpus2Name=name, dictionaries=dictionaries, show_plot=True)
-        for i,motif in enumerate(motifs):
+        novelties, _ = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
+                                        corpus2Name=name, dictionaries=dictionaries, show_plot=True)
+        for i, motif in enumerate(motifs):
             print("Mean novelty at size {}: {}".format(motif, novelties[:,i].mean()))
 
     else:
@@ -40,13 +41,17 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
                                    plot_fp=report_path+"chords_"+name+".png")
         
         report.write("* Total Variation Distance for chords distribution: {}\n".format(tv_chords))
+
         tv_intervals = analyze_intervals(None, dataset, title="Intervals comparison for model "+name,
                                          real_dis=intervals_distr_ref, 
                                          plot_fp=report_path+"intervals_"+name+".png")
 
         report.write("* Total Variation Distance for intervals distribution: {}\n".format(tv_intervals))
+
+        analyze_transitions(dataset, sizes, dictionaries, name+' - ', plot_fp=report_path+name)
+
         novelties = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
-                                          corpus2Name=name, dictionaries=dictionaries, 
+                                     corpus2Name=name, dictionaries=dictionaries,
                                           plot_fp=report_path+"novelty_"+name+".png")
         for i,motif in enumerate(motifs):
             report.write("* Mean novelty at size {}: {}\n".format(motif, novelties[:,i].mean()))
@@ -55,8 +60,10 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("![](chords_"+name+".png)\n")
         report.write("![](intervals_"+name+".png)\n")
         report.write("![](novelty_"+name+".png)\n")
+        report.write("![]("+name+"_p.png)\n\n")
+        report.write("![]("+name+"_T.png)\n\n")
+        report.write("![]("+name+"_dT.png)\n\n")
         report.write("\n\n")
-
 
 
 def key_analysis(dataset, dictionaries, report=None):
@@ -82,13 +89,17 @@ def key_analysis(dataset, dictionaries, report=None):
 
 
 def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4, 8, 16, 32),
-               write_report=False, report_path="report/"):
+               write_report=True, report_path="report/"):
     """
     :param ref_dataset_path:
-    :param datasets_paths: list of paths
+    :param dataset_paths: list of paths to generated datasets
+    :param dataset_names: list of corresponding model names
+    :param motif_sizes: (tuple of ints) the size of motifs for novelty analysis
+    :param write_report: True to write an html report (otherwise, everything is output to stdout)
+    :param report_path: if write_report=True, path to generated report and graphs
     """
 
-    ## PREPROCESSING OF MIDI FOLDERS ##
+    # PREPROCESSING OF MIDI FOLDERS
     print("Loading data...")
     dictionaries = getDictionaries()
 
@@ -105,6 +116,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
         for label in data:
             data_all[label] += data[label]
     dictionaries = cleanDic(data_all, dictionaries)  # get reduced dictionaries
+    sizes = (len(dictionaries['dTseqs']), len(dictionaries['tseqs']), len(dictionaries['pitchseqs']))
     ref_dataset = reduce_dataset(ref_dataset, dictionaries)
     for i, data in enumerate(datasets):
         datasets[i] = reduce_dataset(data, dictionaries)
@@ -115,29 +127,34 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
         report = open(report_path+"report.html", 'w')
         report.write("**Comparisons report**\n\n")
 
-    ## PRE-ANALYSIS OF REFERENCE DATASET ##
+    # PRE-ANALYSIS OF REFERENCE DATASET
     print("Preanalysis of reference dataset...")
     autonovelty_ref = autonovelty(ref_dataset, motif_sizes)
     if write_report:
         report.write("Reference dataset\n=================\n\n")
         report.write("{} songs\n\n".format(len(ref_dataset["dTseqs"])))
     chords_distr_ref = preanalysis_chords(ref_dataset, make_plot=write_report, plot_fp=report_path+"chords-real.png")
-    intervals_distr_ref = preanalysis_intervals(ref_dataset, make_plot=write_report, plot_fp=report_path+"intervals-real.png")
+    intervals_distr_ref = preanalysis_intervals(ref_dataset, make_plot=write_report,
+                                                plot_fp=report_path+"intervals-real.png")
+    analyze_transitions(ref_dataset, sizes, dictionaries, "Reference data - ", plot_fp=report_path+'ref')
     key_analysis(ref_dataset, dictionaries, report=report)
     if write_report:
         report.write("Graphs\n------------\n\n")
         report.write("![](chords-real.png)\n\n")
-        report.write("![](intervals-real.png)\n\n\n")
+        report.write("![](intervals-real.png)\n\n")
+        report.write("![](ref_p.png)\n\n")
+        report.write("![](ref_T.png)\n\n")
+        report.write("![](ref_dT.png)\n\n")
     print("Done.")
 
-    ## ANALYSIS OF EACH DATASET ##
+    # ANALYSIS OF EACH DATASET
     for i, data in enumerate(datasets):
         print("Analysis of dataset {}".format(dataset_names[i]))
         if write_report:
             report.write("\n\n\n")
             report.write("Analysis of dataset {}\n=============================\n\n".format(dataset_names[i]))
         analyse_and_compare(data, ref_dataset, dataset_names[i], autonovelty_ref, chords_distr_ref, 
-                            intervals_distr_ref, dataset_paths[i], dictionaries, report=report,
+                            intervals_distr_ref, sizes, dictionaries, motifs=motif_sizes, report=report,
                             report_path=report_path)
         key_analysis(data, dictionaries, report=report)
 

@@ -378,34 +378,100 @@ def analyze_intervals(real_data, gen_data, title="Interval decomposition", real_
     return tvDistance(real_dis, gen_dis)
 
 
-def analyze_transitions_singletype(real_seqs, gen_seqs, size, title, seqname):
-    transitions_real = np.zeros((size, size))
-    for song in real_seqs:
-        for i in range(len(song) - 1):
-            transitions_real[song[i], song[i + 1]] += 1
-
-    transitions_gen = np.zeros((size, size))
-    for song in gen_seqs:
+def analyze_transitions(data, sizes, dictionaries, title_prefix="", show_plot=False, plot_fp=None):
+    """
+    Plot transition matrices
+    :param data: the dataset
+    :param sizes: a tuple (dT dic size, T dic size, P dic size)
+    :param dictionaries: the dictionaries to map back to real pitches and durations
+    :param title_prefix: will be added to titles
+    :param show_plot:
+    :param plot_fp: path to solve the plot (the function adds the final extension)
+    :return:
+    """
+    # Pitch transitions
+    transitions_gen = np.zeros((sizes[2], sizes[2]))
+    for song in data["pitchseqs"]:
         for i in range(len(song) - 1):
             transitions_gen[song[i], song[i + 1]] += 1
+    fig, ax1 = plt.subplots()
+    fig.suptitle(title_prefix + "Transition probabilites for pitch")
+    ax1.matshow(transitions_gen)
+    ax1.set_xlabel("$p_{i+1}$")
+    ax1.set_ylabel("$p_i$")
+    labels = dictionaries['pitch_text']
+    ax1.set_xticks([labels.index('A3'), labels.index('A4'), labels.index('A5'), labels.index('A6'),
+                   labels.index('A7')])
+    ax1.set_xticklabels(['A3', 'A4', 'A5', 'A6', 'A7'])
+    ax1.set_yticks([labels.index('A3'), labels.index('A4'), labels.index('A5'), labels.index('A6'),
+                   labels.index('A7')])
+    ax1.set_yticklabels(['A3', 'A4', 'A5', 'A6', 'A7'])
+    ax2 = fig.add_axes([0.85, 0.1, 0.1, 0.8])
+    ax2.matshow(transitions_gen.sum(axis=1).reshape((transitions_gen.shape[0], 1)))
+    ax2.set_xticks([])
+    ax2.set_yticks([labels.index('A3'), labels.index('A4'), labels.index('A5'), labels.index('A6'),
+                    labels.index('A7')])
+    ax2.set_yticklabels(['A3', 'A4', 'A5', 'A6', 'A7'])
+    ax2.grid(False)
+    if show_plot:
+        fig.show()
+    if plot_fp is not None:
+        plt.savefig(plot_fp+"_p.png")
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
-    fig.suptitle(title, size='xx-large', y=1.04)
-    ax1.matshow(transitions_real)
-    ax1.set_title("Real distribution", fontsize=25)
-    ax1.set_xlabel("$"+seqname+"_i$", fontsize=25)
-    ax1.set_ylabel("$"+seqname+"_{i+1}$", fontsize=25)
-    ax2.matshow(transitions_gen)
-    ax2.set_title("Generated distribution", size="xx-large")
-    ax2.set_xlabel("$"+seqname+"_i$", fontsize=25)
-    ax2.set_ylabel("$"+seqname+"_{i+1}$", fontsize=25)
-    fig.show()
+    # dT transitions : here we only plot existing values
+    transitions_gen = np.zeros((sizes[0], sizes[0]))
+    for song in data["dTseqs"]:
+        for i in range(len(song) - 1):
+            transitions_gen[song[i], song[i + 1]] += 1
+    idxes = np.where(transitions_gen.sum(axis=1) != 0)[0]
+    iv, jv = np.meshgrid(idxes, idxes, indexing='ij')
+    transitions_gen = transitions_gen[iv, jv]
+    fig, ax1 = plt.subplots()
+    fig.suptitle(title_prefix + "Transition probabilities for dT")
+    ax1.matshow(transitions_gen)
+    ax1.set_xlabel("$dT_{i+1}$")
+    ax1.set_ylabel("$dT_i$")
+    ax1.set_xticks(np.arange(transitions_gen.shape[0]))
+    ax1.set_xticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax1.set_yticks(np.arange(transitions_gen.shape[0]))
+    ax1.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax1.grid(False)
+    ax2 = fig.add_axes([0.85, 0.1, 0.1, 0.8])
+    ax2.matshow(transitions_gen.sum(axis=1).reshape((transitions_gen.shape[0], 1)))
+    ax2.set_xticks([])
+    ax2.set_yticks(np.arange(transitions_gen.shape[0]))
+    ax2.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax2.grid(False)
+    if show_plot:
+        fig.show()
+    if plot_fp is not None:
+        plt.savefig(plot_fp+"_dT.png")
 
-
-def analyze_transitions(real_data, gen_data, sizes, title_prefix=""):
-    analyze_transitions_singletype(real_data["pitchseqs"], gen_data["pitchseqs"], sizes[2],
-                                   title_prefix+"Transition probabilites for pitch", seqname="p")
-    analyze_transitions_singletype(real_data["dTseqs"], gen_data["dTseqs"], sizes[0],
-                                   title_prefix+"Transition probabilities for dT", seqname="dT")
-    analyze_transitions_singletype(real_data["tseqs"], gen_data["tseqs"], sizes[1],
-                                   title_prefix+"Transition probabilities for T", seqname="T")
+    # t transitions : idem
+    transitions_gen = np.zeros((sizes[1], sizes[1]))
+    for song in data["tseqs"]:
+        for i in range(len(song) - 1):
+            transitions_gen[song[i], song[i + 1]] += 1
+    idxes = np.where(transitions_gen.sum(axis=1) != 0)[0]
+    iv, jv = np.meshgrid(idxes, idxes, indexing='ij')
+    transitions_gen = transitions_gen[iv, jv]
+    fig, ax1 = plt.subplots()
+    fig.suptitle(title_prefix + "Transition probabilities for T")
+    ax1.matshow(transitions_gen)
+    ax1.set_xlabel("$T_{i+1}$")
+    ax1.set_ylabel("$T_i$")
+    ax1.set_xticks(np.arange(transitions_gen.shape[0]))
+    ax1.set_xticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax1.set_yticks(np.arange(transitions_gen.shape[0]))
+    ax1.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax1.grid(False)
+    ax2 = fig.add_axes([0.85, 0.1, 0.1, 0.8])
+    ax2.matshow(transitions_gen.sum(axis=1).reshape((transitions_gen.shape[0], 1)))
+    ax2.set_xticks([])
+    ax2.set_yticks(np.arange(transitions_gen.shape[0]))
+    ax2.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax2.grid(False)
+    if show_plot:
+        fig.show()
+    if plot_fp is not None:
+        plt.savefig(plot_fp + "_T.png")
