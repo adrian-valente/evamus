@@ -15,7 +15,7 @@ def preprocess(datapath, writeMIDI=False, verbose=False):
              as a midi integer and 'pitch_text' is the same sequence with the pitches in musical notation.
     """
     dictionaries = getDictionaries()
-    dataset = parseFolder(datapath, dictionaries, verbose=verbose)
+    dataset, labels = parseFolder(datapath, dictionaries, verbose=verbose)
     dictionaries = cleanDic(dataset, dictionaries, verbose=verbose)
     xdTs, xTs, xPs, dTvocsize, Tvocsize, pitchvocsize = toZ(dataset, dictionaries)
     dataset = {'dTseqs': xdTs, 'tseqs': xTs, 'pitchseqs': xPs}
@@ -28,7 +28,7 @@ def preprocess(datapath, writeMIDI=False, verbose=False):
                   dictionaries['pitch_text'][dictionaries['pitchseqs'].index(p)])
         writeMIDI(dtseq, Tseq, pitchseq, path='../data/', label='example')
 
-    return dataset, (dTvocsize, Tvocsize, pitchvocsize), dictionaries
+    return dataset, (dTvocsize, Tvocsize, pitchvocsize), dictionaries, labels
 
 
 def split(dataset, k):

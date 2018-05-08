@@ -18,7 +18,7 @@ def reduce_dataset(dataset, dictionaries):
 
 
 def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_distr_ref, 
-                        intervals_distr_ref, sizes, dictionaries, motifs=(2,3,4,5,6),
+                        intervals_distr_ref, sizes, dictionaries, labels, ref_labels, motifs=(2,3,4,5,6),
                         report=None, report_path=None):
     if report is None:
         print("Dataset {}: {} songs".format(name, len(dataset["dTseqs"])))
@@ -28,8 +28,9 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         tv_intervals, _ = analyze_intervals(None, dataset, title="Intervals decomposition for model "+name,
                                             real_dis=intervals_distr_ref, show_plot=True)
         print("Total Variation Distance for intervals distribution: {}".format(tv_intervals))
-        novelties, _ = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
-                                        corpus2Name=name, dictionaries=dictionaries, show_plot=True)
+        novelties, _ = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref, labels=labels,
+                                        ref_labels=ref_labels, corpus2Name=name, dictionaries=dictionaries,
+                                        show_plot=True)
         for i, motif in enumerate(motifs):
             print("Mean novelty at size {}: {}".format(motif, novelties[:,i].mean()))
 
@@ -50,9 +51,9 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
 
         analyze_transitions(dataset, sizes, dictionaries, name+' - ', plot_fp=report_path+name)
 
-        novelties = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref,
-                                     corpus2Name=name, dictionaries=dictionaries,
-                                          plot_fp=report_path+"novelty_"+name+".png")
+        novelties = novelty_analysis(ref_dataset, dataset, motifs, autonovelty_ref, labels=labels,
+                                     ref_labels=ref_labels, corpus2Name=name, dictionaries=dictionaries,
+                                     plot_fp=report_path+"novelty_"+name+".png", report=report)
         for i,motif in enumerate(motifs):
             report.write("* Mean novelty at size {}: {}\n".format(motif, novelties[:,i].mean()))
 
@@ -103,11 +104,14 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
     print("Loading data...")
     dictionaries = getDictionaries()
 
-    ref_dataset = parseFolder(ref_dataset_path, dictionaries)
+    ref_dataset, ref_labels = parseFolder(ref_dataset_path, dictionaries)
     datasets = []
+    labels = []
     for path in dataset_paths:
-        datasets.append(parseFolder(path, dictionaries))
-    
+        data, lbl = parseFolder(path, dictionaries)
+        datasets.append(data)
+        labels.append(lbl)
+
     # reduction of dictionary size  (we have to ensure that all notes from all datasets
     # are included in the dictionaries)
     data_all = {"dTseqs": list(ref_dataset["dTseqs"]), "tseqs": list(ref_dataset['tseqs']), 
@@ -154,8 +158,8 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
             report.write("\n\n\n")
             report.write("Analysis of dataset {}\n=============================\n\n".format(dataset_names[i]))
         analyse_and_compare(data, ref_dataset, dataset_names[i], autonovelty_ref, chords_distr_ref, 
-                            intervals_distr_ref, sizes, dictionaries, motifs=motif_sizes, report=report,
-                            report_path=report_path)
+                            intervals_distr_ref, sizes, dictionaries, labels[i], ref_labels,
+                            motifs=motif_sizes, report=report, report_path=report_path)
         key_analysis(data, dictionaries, report=report)
 
     if write_report:

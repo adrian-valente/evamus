@@ -8,8 +8,8 @@ from midiparser import writeMIDI
 from preprocessing import toMIDI
 
 
-def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="../data/lcs/", 
-                     corpus2Name="no_name", dictionaries=None, show_plot=False, plot_fp=None,
+def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="../data/lcs/", labels=None,
+                     ref_labels=None, corpus2Name="no_name", dictionaries=None, show_plot=False, plot_fp=None,
                      report=None):
     """
     Make a quick analysis of the novelty profile of corpus2 with respect to corpus1
@@ -18,10 +18,13 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
     :param motifs: (a sequence of ints) motif sizes to consider
     :param auto: pre-computed auto novelty of corpus1
     :param path: path where to write longest common subsequences
+    :param labels: list of strings, the names of the songs of corpus2
+    :param ref_labels: list of string, the names of the songs of corpus1
     :param corpus2Name:
     :param dictionaries: dictionaries mapping back to MIDI (for writing LCSs)
     :param show_plot: whether to show plot directly
     :param plot_fp: filepath to save the plot
+    :param report: if the results are written to a report, the corresponding file stream
     """
     print("Novelty analysis with motif sizes {}".format(motifs))
     N1 = len(corpus1["dTseqs"])
@@ -30,6 +33,11 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
 
     if auto is None:
         auto = autonovelty(corpus1)
+
+    if labels is None:
+        labels = list(range(len(corpus2["dTseqs"])))
+    if ref_labels is None:
+        ref_labels = list(range(len(corpus1["dTseqs"])))
 
     # Make a plot
     df = pd.DataFrame({'value': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "auto-novelty"})
@@ -47,50 +55,60 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
 
     # Find 5 less original songs (for a mean of novelties)
     worse = np.argsort(novelties.mean(axis=1))[:5]
-    print worse
-    if report is None:
-        print("Less original songs")
+    if novelties[worse[0], -1] == 1.:  # criterion to consider all songs original
+        if report is None:
+            print("All songs original enough ! :) ")
+        else:
+            report.write("* Less original songs analysis: all songs original enough :)\n")
     else:
-        report.write("* Less original songs\n")
-    for i in worse:
+        print worse
         if report is None:
-            print("Generated song {}, novelties {}".format(i, novelties[i,:]))
+            print("Less original songs")
         else:
-            report.write(" - Generated song {}, novelties {}. ".format(i, novelties[i,:]))
-
-        # Find corpus1's most similar song
-        song = getSong(corpus2, i)
-        lenSong = len(song["dTseqs"])
-        sets = compute_sets_single_song(song, motifs)
-        curMax = 0.
-        curArgmax = 0
-        # for each song of the corpus1, compute similarity with currently studied song
-        for s in range(N1):
-            nov = compare_to_sets_single_song(getSong(corpus1, s), motifs, sets)
-            sim = np.zeros(nov.shape)
-            for j,motif in enumerate(motifs):
-                coincidences = (1. - nov[j]) * (len(corpus1["dTseqs"][s]) - motif + 1)  #renormalization
-                sim[j] = coincidences / (lenSong - motif + 1)  # get similarity
-            sim_mean = np.mean(sim)
-            if sim_mean > curMax:
-                curMax = sim[j]
-                curArgmax = s
-        if report is None:
-            print("This song is very similar to song {} of the corpus: similarity {}".format(curArgmax, curMax))
-        else:
-            report.write("This song is very similar to song {} of the corpus: similarity {}. ".format(curArgmax, curMax))
-
-        # find longest common subsequence among the 2 similar songs
-        if dictionaries is not None:
-            pt = PrefixTree(getSong(corpus1, curArgmax))
-            lcs = pt.longest_common_subsequence(song)
-            dtseq, tseq, pseq = toMIDI([note[0] for note in lcs], [note[1] for note in lcs], [note[2] for note in lcs],
-                                       dictionaries)
-            writeMIDI(dtseq, tseq, pseq, path=path, label="lcs"+corpus2Name, tag=str(curArgmax)+'-'+str(i))
+            report.write("* Less original songs\n")
+        for i in worse:
             if report is None:
-                print("longest common subsequence of length {} written to disk".format(len(lcs)))
+                print("Generated song {}, novelties {}".format(labels[i], novelties[i,:]))
             else:
-                report.write("Longest common subsequence of length {} written to disk\n".format(len(lcs)))
+                report.write(" - Generated song {}, novelties {}. ".format(labels[i], novelties[i,:]))
+
+            # Find corpus1's most similar song
+            song = getSong(corpus2, i)
+            lenSong = len(song["dTseqs"])
+            sets = compute_sets_single_song(song, motifs)
+            curMax = 0.
+            curArgmax = 0
+            # for each song of the corpus1, compute similarity with currently studied song
+            for s in range(N1):
+                nov = compare_to_sets_single_song(getSong(corpus1, s), motifs, sets)
+                sim = np.zeros(nov.shape)
+                for j,motif in enumerate(motifs):
+                    coincidences = (1. - nov[j]) * (len(corpus1["dTseqs"][s]) - motif + 1)  # renormalization
+                    sim[j] = coincidences / (lenSong - motif + 1)  # get similarity
+                sim_mean = np.mean(sim)
+                if sim_mean > curMax:
+                    curMax = sim[j]
+                    curArgmax = s
+            if report is None:
+                print("This song is very similar to song {} of the corpus: similarity {}".format(
+                    ref_labels[curArgmax], curMax))
+            else:
+                report.write("This song is very similar to song {} of the corpus: similarity {}. ".format(
+                    ref_labels[curArgmax], curMax))
+
+            # find longest common subsequence among the 2 similar songs
+            if dictionaries is not None:
+                pt = PrefixTree(getSong(corpus1, curArgmax))
+                lcs = pt.longest_common_subsequence(song)
+                dtseq, tseq, pseq = toMIDI([note[0] for note in lcs], [note[1] for note in lcs], [note[2] for note in lcs],
+                                           dictionaries)
+
+                writeMIDI(dtseq, tseq, pseq, path=path, label="lcs"+corpus2Name,
+                          tag=str(ref_labels[curArgmax])+'-'+str(labels[i]))
+                if report is None:
+                    print("longest common subsequence of length {} written to disk".format(len(lcs)))
+                else:
+                    report.write("Longest common subsequence of length {} written to disk\n".format(len(lcs)))
 
     # Get 5 most original songs (here wrt motif size #2)
     best = np.argsort(novelties.mean(axis=1))[-5:]
@@ -100,9 +118,9 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
         report.write("* Most original songs\n")
     for i in best[::-1]:
         if report is None:
-            print("Generated song {} : novelties {}".format(i, novelties[i, :]))
+            print("Generated song {} : novelties {}".format(labels[i], novelties[i, :]))
         else:
-            report.write(" - Generated song {} : novelties {}\n".format(i, novelties[i, :]))
+            report.write(" - Generated song {} : novelties {}\n".format(labels[i], novelties[i, :]))
 
     return novelties
 
@@ -126,7 +144,6 @@ def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32),
         sns.violinplot(data=df, x='motif-size', y='value', hue='model', cut=0)
     
     return df
-
 
 
 def autonovelty(corpus, motifs=(2, 4, 8, 16, 32)):

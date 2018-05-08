@@ -127,6 +127,7 @@ def parseFolder(datapath, dictionaries, verbose=False):
     DTs = []
     Ts = []
     Ps = []
+    labels = []
 
     for filename in os.listdir(datapath):
         try:
@@ -142,6 +143,7 @@ def parseFolder(datapath, dictionaries, verbose=False):
                     DTs.append(dtseq)
                     Ts.append(Tseq)
                     Ps.append(pitchseq)
+                    labels.append(name)
                 elif verbose:
                     print("-->skipped")
         except Warning as err:
@@ -153,7 +155,7 @@ def parseFolder(datapath, dictionaries, verbose=False):
             print("Error: {}".format(err))
             continue
 
-    return {"dTseqs": DTs, "tseqs": Ts, "pitchseqs": Ps}
+    return {"dTseqs": DTs, "tseqs": Ts, "pitchseqs": Ps}, labels
 
 
 def getDictionaries():
