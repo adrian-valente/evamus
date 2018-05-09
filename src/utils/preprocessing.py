@@ -1,4 +1,4 @@
-from utils.midiparser import getDictionaries, parseFolder, cleanDic, writeMIDI
+from midiparser import getDictionaries, parseFolder, cleanDic, writeMIDI
 
 
 def preprocess(datapath, writeMIDI=False, verbose=False):

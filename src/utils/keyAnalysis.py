@@ -4,6 +4,8 @@ from collections import defaultdict
 from tqdm import tqdm
 from music21Interface import seqs2stream
 from tools import getSong
+import sys
+from preprocessing import preprocess
 
 
 def key_analysis(dataset, dictionaries, report=None, per_measures=True, labels=None, slice_size=3):
@@ -69,3 +71,12 @@ def perMeasureKeyAnalysis(song, slice_size, report=None):
             report.write("fraction of changes:  {:.2%}\n".format(changes))
             report.write("fraction of switches: {:.2%}\n".format(switches))
     return changes, switches
+
+
+if __name__ == "__main__":
+    datapath = sys.argv[1]
+    dataset, sizes, dictionaries, labels = preprocess(datapath)
+    name = datapath.split('/')[-2]
+    report = open('log'+name+'.txt', 'w')
+    key_analysis(dataset, dictionaries, report=report, labels=labels)
+    report.close()
