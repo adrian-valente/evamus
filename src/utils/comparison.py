@@ -67,28 +67,6 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("\n\n")
 
 
-def key_analysis(dataset, dictionaries, report=None):
-    print("Starting key analysis...")
-    keys = defaultdict(float)
-    correlations = []
-    for s in tqdm(range(len(dataset["dTseqs"]))):
-        song = getSong(dataset, s)
-        stream = seqs2stream(song, dictionaries)
-        key_fit = stream.analyze('key')
-        keys[key_fit.name] += 1
-        correlations.append(key_fit.correlationCoefficient)
-    if report is not None:
-        report.write("Key analyses\n--------------\n\n")
-        report.write("* Mean key correlation: {}\n".format(np.mean(correlations)))
-        report.write("* Most frequent keys: \n")
-        l = [(keys[k],k) for k in keys]
-        l.sort()
-        l.reverse()
-        for i in range(min(5, len(l))):
-            report.write(" - {} : {} songs\n".format(l[i][1], l[i][0]))
-        report.write("\n\n\n")
-
-
 def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4, 8, 16, 32),
                write_report=True, report_path="report/"):
     """

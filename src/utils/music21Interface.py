@@ -1,5 +1,6 @@
-from music21.stream import Stream
+from music21.stream import Stream, Measure
 from music21.note import Note
+
 
 def seqs2stream(song, dictionaries):
     """
@@ -20,3 +21,16 @@ def seqs2stream(song, dictionaries):
         n.quarterLength = dictionaries['tseqs'][t]
         out.insert(curOffset, n)
     return out
+
+
+def getMeasures(song):
+    measures = [Measure()]
+    i = 0
+    for note in song:
+        if note.offset // 4 == i:  # still same measure
+            measures[-1].insert(note.offset % 4., note)
+        else:  # new measure
+            measures.append(Measure())
+            i += 1
+            measures[-1].insert(note.offset % 4., note)
+    return measures

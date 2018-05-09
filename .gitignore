@@ -17,3 +17,4 @@ src/models/PretrainedBachProp7.py
 src/models/model.hdf5
 **/.vscode
 src/report/**
+*.txt
