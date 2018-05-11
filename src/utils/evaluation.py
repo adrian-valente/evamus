@@ -475,3 +475,20 @@ def analyze_transitions(data, sizes, dictionaries, title_prefix="", show_plot=Fa
         fig.show()
     if plot_fp is not None:
         plt.savefig(plot_fp + "_T.png")
+
+
+def plot_lengths(dataset, dictionaries, title, plot_fp=None, show_plot=False):
+    lengths = []
+    for s in range(len(dataset["dTseqs"])):
+        l = 0
+        for dt in dataset["dTseqs"][s]:
+            l += dictionaries['dTseqs'][dt]
+        lengths.append(l)
+    print lengths
+    fig, ax = plt.subplots()
+    sns.distplot(lengths, kde=False, rug=True, bins=15)
+    fig.suptitle(title)
+    if show_plot:
+        fig.show()
+    if plot_fp is not None:
+        plt.savefig(plot_fp)

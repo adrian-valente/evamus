@@ -14,6 +14,8 @@ def preprocess(datapath, writeMIDI=False, verbose=False):
              the rythms in fractional notation, and 'pitchseqs' contains for each integer in Z the corresponding pitch
              as a midi integer and 'pitch_text' is the same sequence with the pitches in musical notation.
     """
+    if datapath[-1] != '/':
+        datapath += '/'
     dictionaries = getDictionaries()
     dataset, labels = parseFolder(datapath, dictionaries, verbose=verbose)
     dictionaries = cleanDic(dataset, dictionaries, verbose=verbose)

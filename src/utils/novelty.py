@@ -8,7 +8,7 @@ from midiparser import writeMIDI
 from preprocessing import toMIDI
 
 
-def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="../data/lcs/", labels=None,
+def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path=None, labels=None,
                      ref_labels=None, corpus2Name="no_name", dictionaries=None, show_plot=False, plot_fp=None,
                      report=None):
     """
@@ -97,18 +97,19 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path="..
                     ref_labels[curArgmax], curMax))
 
             # find longest common subsequence among the 2 similar songs
-            if dictionaries is not None:
-                pt = PrefixTree(getSong(corpus1, curArgmax))
-                lcs = pt.longest_common_subsequence(song)
-                dtseq, tseq, pseq = toMIDI([note[0] for note in lcs], [note[1] for note in lcs], [note[2] for note in lcs],
-                                           dictionaries)
+            if path is not None:
+                if dictionaries is not None:
+                    pt = PrefixTree(getSong(corpus1, curArgmax))
+                    lcs = pt.longest_common_subsequence(song)
+                    dtseq, tseq, pseq = toMIDI([note[0] for note in lcs], [note[1] for note in lcs], [note[2] for note in lcs],
+                                               dictionaries)
 
-                writeMIDI(dtseq, tseq, pseq, path=path, label="lcs"+corpus2Name,
-                          tag=str(ref_labels[curArgmax])+'-'+str(labels[i]))
-                if report is None:
-                    print("longest common subsequence of length {} written to disk".format(len(lcs)))
-                else:
-                    report.write("Longest common subsequence of length {} written to disk\n".format(len(lcs)))
+                    writeMIDI(dtseq, tseq, pseq, path=path, label="lcs"+corpus2Name,
+                              tag=str(ref_labels[curArgmax])+'-'+str(labels[i]))
+                    if report is None:
+                        print("longest common subsequence of length {} written to disk".format(len(lcs)))
+                    else:
+                        report.write("Longest common subsequence of length {} written to disk\n".format(len(lcs)))
 
     # Get 5 most original songs (here wrt motif size #2)
     best = np.argsort(novelties.mean(axis=1))[-5:]

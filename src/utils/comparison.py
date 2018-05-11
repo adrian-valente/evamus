@@ -1,11 +1,12 @@
-import numpy as np
-from collections import defaultdict
 from midiparser import parseFolder, getDictionaries, cleanDic
-from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals, analyze_transitions
+from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals, \
+    analyze_transitions, plot_lengths
 from novelty import autonovelty, novelty_analysis
-from tools import getSong
-from music21Interface import seqs2stream
-from tqdm import tqdm
+#from keyAnalysis import key_analysis
+import matplotlib as mpl
+
+def key_analysis(*args, **kwargs):
+    pass
 
 
 def reduce_dataset(dataset, dictionaries):
@@ -37,6 +38,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
     else:
         report.write("Basic numbers\n----------------\n\n")
         report.write("* {} songs\n".format(len(dataset["dTseqs"])))
+        plot_lengths(dataset, dictionaries, name+" song lengths", plot_fp=report_path+name+"_lengths.png")
         tv_chords = analyze_chords(None, dataset, title="Chords comparison for model "+name, 
                                    real_dis=chords_distr_ref, 
                                    plot_fp=report_path+"chords_"+name+".png")
@@ -58,6 +60,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
             report.write("* Mean novelty at size {}: {}\n".format(motif, novelties[:,i].mean()))
 
         report.write("Graphs\n-----------\n\n")
+        report.write("![]("+name+"_lengths.png\n")
         report.write("![](chords_"+name+".png)\n")
         report.write("![](intervals_"+name+".png)\n")
         report.write("![](novelty_"+name+".png)\n")
@@ -77,6 +80,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
     :param write_report: True to write an html report (otherwise, everything is output to stdout)
     :param report_path: if write_report=True, path to generated report and graphs
     """
+    mpl.rcParams['image.cmap'] = 'binary'
 
     # PREPROCESSING OF MIDI FOLDERS
     print("Loading data...")
@@ -120,8 +124,11 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
                                                 plot_fp=report_path+"intervals-real.png")
     analyze_transitions(ref_dataset, sizes, dictionaries, "Reference data - ", plot_fp=report_path+'ref')
     key_analysis(ref_dataset, dictionaries, report=report)
+    plot_lengths(ref_dataset, dictionaries, title="Reference dataset song lengths",
+                 plot_fp=report_path+'ref-lengths.png')
     if write_report:
         report.write("Graphs\n------------\n\n")
+        report.write("![](ref-lengths.png\n\n")
         report.write("![](chords-real.png)\n\n")
         report.write("![](intervals-real.png)\n\n")
         report.write("![](ref_p.png)\n\n")
@@ -143,3 +150,8 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
     if write_report:
         report.write(r'<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>')
     report.close()
+
+
+if __name__=="__main__":
+    comparison('../../data/JSB_Chorales/', ['../../data/JSB_Chorales/gen/fungram12/', '/Users/toroloco/Documents/etudes/info/projets/evamus/BachProp/save/BachProp/JSB_Chorales/midi/'],
+               ['fungram12', 'BachProp'], report_path='../report/')
