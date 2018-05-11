@@ -275,7 +275,6 @@ def analyze_chords(real_data, gen_data, title="Chord decomposition", real_dis=No
     gen_dis = normalize(gen_dis)
 
     # Make plot
-    keys = sorted(set(real_dis.keys()).union(set(gen_dis.keys())))
     fig, ax = plt.subplots()
     df = pd.DataFrame({'intervals': list(range(12)),
                        'frequency': [real_dis[i] for i in range(12)],

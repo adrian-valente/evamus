@@ -126,6 +126,30 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path=Non
     return novelties
 
 
+def plot_novelties(ref, novelties, names, motifs, plot_fp):
+    dfs = []
+    dfs.append(pd.DataFrame({'value': ref.ravel(), 'motif-size': motifs * ref.shape[0],
+                             'model': 'Reference auto-novelty'}))
+    for i, nov in enumerate(novelties):
+        dfs.append(pd.DataFrame({'value': nov.ravel(), 'motif-size': motifs * nov.shape[0],
+                                 'model': names[i]}))
+    df = pd.concat(dfs)
+    plt.figure()
+    sns.factorplot(data=df, x='motif-size', y='value', hue='model', kind='violin', cut=0, legend_out=True)
+    plt.savefig(plot_fp+'_violin.png')
+
+    plt.figure()
+    sns.factorplot(data=df, x='motif-size', y='value', hue='model', kind='box', legend_out=True)
+    plt.savefig(plot_fp+'_box.png')
+
+    plt.figure()
+    l = len(novelties)+1
+    markers = ['x', 'o', 's', 'P', "*", 'h']
+    sns.factorplot(data=df, x='motif-size', y='value', hue='model', markers=markers[:l], palette="dark",
+                   join=False, ci="sd", dodge=0.25)
+    plt.savefig(plot_fp+'_point.png')
+
+
 def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32), auto=None, plot=True):
     """
     Computes novelties for each of the datasets against ref_dataset, and plots a violinplot

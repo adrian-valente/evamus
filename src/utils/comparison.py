@@ -1,7 +1,7 @@
 from midiparser import parseFolder, getDictionaries, cleanDic
 from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals, \
     analyze_transitions, plot_lengths
-from novelty import autonovelty, novelty_analysis
+from novelty import autonovelty, novelty_analysis, plot_novelties
 import matplotlib as mpl
 from keyAnalysis import key_analysis
 
@@ -65,6 +65,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("![]("+name+"_T.png)\n\n")
         report.write("![]("+name+"_dT.png)\n\n")
         report.write("\n\n")
+    return novelties
 
 
 def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3, 4, 5, 6),
@@ -120,7 +121,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3
     intervals_distr_ref = preanalysis_intervals(ref_dataset, make_plot=write_report,
                                                 plot_fp=report_path+"intervals-real.png")
     analyze_transitions(ref_dataset, sizes, dictionaries, "Reference data - ", plot_fp=report_path+'ref')
-    key_analysis(ref_dataset, dictionaries, report=report)
+    #key_analysis(ref_dataset, dictionaries, report=report)
     plot_lengths(ref_dataset, dictionaries, title="Reference dataset song lengths",
                  plot_fp=report_path+'ref-lengths.png')
     if write_report:
@@ -134,15 +135,23 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3
     print("Done.")
 
     # ANALYSIS OF EACH DATASET
+    novelties = []
     for i, data in enumerate(datasets):
         print("Analysis of dataset {}".format(dataset_names[i]))
         if write_report:
             report.write("\n\n\n")
             report.write("Analysis of dataset {}\n=============================\n\n".format(dataset_names[i]))
-        analyse_and_compare(data, ref_dataset, dataset_names[i], autonovelty_ref, chords_distr_ref, 
-                            intervals_distr_ref, sizes, dictionaries, labels[i], ref_labels,
-                            motifs=motif_sizes, report=report, report_path=report_path)
+        novelties.append(analyse_and_compare(data, ref_dataset, dataset_names[i], autonovelty_ref, chords_distr_ref,
+                                             intervals_distr_ref, sizes, dictionaries, labels[i], ref_labels,
+                                             motifs=motif_sizes, report=report, report_path=report_path))
         #key_analysis(data, dictionaries, report=report)
+
+    if write_report:
+        plot_novelties(autonovelty_ref, novelties, dataset_names, motif_sizes, plot_fp=report_path+"novelties.png")
+        report.write("Summary novelties\n==========================\n\n")
+        report.write("![](novelties_violin.png)\n\n")
+        report.write("![](novelties_box.png)\n\n")
+        report.write("![](novelties_point.png)\n\n")
 
     if write_report:
         report.write(r'<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>')
