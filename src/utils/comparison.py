@@ -2,11 +2,8 @@ from midiparser import parseFolder, getDictionaries, cleanDic
 from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals, \
     analyze_transitions, plot_lengths
 from novelty import autonovelty, novelty_analysis
-#from keyAnalysis import key_analysis
 import matplotlib as mpl
-
-def key_analysis(*args, **kwargs):
-    pass
+from keyAnalysis import key_analysis
 
 
 def reduce_dataset(dataset, dictionaries):
@@ -70,7 +67,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("\n\n")
 
 
-def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4, 8, 16, 32),
+def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3, 4, 5, 6),
                write_report=True, report_path="report/"):
     """
     :param ref_dataset_path:
@@ -145,7 +142,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
         analyse_and_compare(data, ref_dataset, dataset_names[i], autonovelty_ref, chords_distr_ref, 
                             intervals_distr_ref, sizes, dictionaries, labels[i], ref_labels,
                             motifs=motif_sizes, report=report, report_path=report_path)
-        key_analysis(data, dictionaries, report=report)
+        #key_analysis(data, dictionaries, report=report)
 
     if write_report:
         report.write(r'<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>')

@@ -257,7 +257,10 @@ def compare_to_sets(corpus, motifs, sets):
 
         # divide number of occurrences by number of sequences
         for m, mot in enumerate(motifs):
-            values[s][m] = 1. - counters[mot] / float(n - mot + 1)
+            if float(n - mot + 1) <= 0:
+                values[s][m] = np.nan
+            else:
+                values[s][m] = 1. - counters[mot] / float(n - mot + 1)
 
     return np.array(values)
 
