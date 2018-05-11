@@ -6,6 +6,7 @@ from novelty import autonovelty, novelty_analysis
 from tools import getSong
 from music21Interface import seqs2stream
 from tqdm import tqdm
+from keyAnalysis import key_analysis
 
 
 def reduce_dataset(dataset, dictionaries):
@@ -67,7 +68,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
         report.write("\n\n")
 
 
-def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4, 8, 16, 32),
+def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3, 4, 5, 6),
                write_report=True, report_path="report/"):
     """
     :param ref_dataset_path:
@@ -119,7 +120,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
     intervals_distr_ref = preanalysis_intervals(ref_dataset, make_plot=write_report,
                                                 plot_fp=report_path+"intervals-real.png")
     analyze_transitions(ref_dataset, sizes, dictionaries, "Reference data - ", plot_fp=report_path+'ref')
-    key_analysis(ref_dataset, dictionaries, report=report)
+    #key_analysis(ref_dataset, dictionaries, report=report)
     if write_report:
         report.write("Graphs\n------------\n\n")
         report.write("![](chords-real.png)\n\n")
@@ -138,7 +139,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 4
         analyse_and_compare(data, ref_dataset, dataset_names[i], autonovelty_ref, chords_distr_ref, 
                             intervals_distr_ref, sizes, dictionaries, labels[i], ref_labels,
                             motifs=motif_sizes, report=report, report_path=report_path)
-        key_analysis(data, dictionaries, report=report)
+        #key_analysis(data, dictionaries, report=report)
 
     if write_report:
         report.write(r'<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>')
