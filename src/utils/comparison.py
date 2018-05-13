@@ -147,7 +147,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3
         #key_analysis(data, dictionaries, report=report)
 
     if write_report:
-        plot_novelties(autonovelty_ref, novelties, dataset_names, motif_sizes, plot_fp=report_path+"novelties.png")
+        plot_novelties(autonovelty_ref, novelties, dataset_names, motif_sizes, plot_fp=report_path+"novelties")
         report.write("Summary novelties\n==========================\n\n")
         report.write("![](novelties_violin.png)\n\n")
         report.write("![](novelties_box.png)\n\n")
