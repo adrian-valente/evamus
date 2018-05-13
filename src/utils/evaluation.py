@@ -400,25 +400,19 @@ def analyze_transitions(data, sizes, dictionaries, title_prefix="", show_plot=Fa
     ax1.set_ylabel("$p_i$")
     labels = dictionaries['pitch_text']
     A_idxes = [labels.index(i) for i in labels if i.startswith('A')]
-    # ax1.set_xticks([labels.index('A3'), labels.index('A4'), labels.index('A5'), labels.index('A6'),
-    #                labels.index('A7')])
-    # ax1.set_xticklabels(['A3', 'A4', 'A5', 'A6', 'A7'])
-    # ax1.set_yticks([labels.index('A3'), labels.index('A4'), labels.index('A5'), labels.index('A6'),
-    #                labels.index('A7')])
-    # ax1.set_yticklabels(['A3', 'A4', 'A5', 'A6', 'A7'])
     ax1.set_xticks(A_idxes)
     ax1.set_xticklabels([labels[i] for i in A_idxes])
     ax1.set_yticks(A_idxes)
     ax1.set_yticklabels([labels[i] for i in A_idxes])
-    ax2 = fig.add_axes([0.85, 0.1, 0.1, 0.8])
+    bottom = ax1.get_position().get_points()[0,1]
+    right = ax1.get_position().get_points()[1,0]
+    top = ax1.get_position().get_points()[1,1]
+    ax2 = fig.add_axes((right - 0.1, bottom, 0.1, top - bottom))
     ax2.matshow(transitions_gen.sum(axis=1).reshape((transitions_gen.shape[0], 1)))
     ax2.set_xticks([])
-    # ax2.set_yticks([labels.index('A3'), labels.index('A4'), labels.index('A5'), labels.index('A6'),
-    #                 labels.index('A7')])
-    # ax2.set_yticklabels(['A3', 'A4', 'A5', 'A6', 'A7'])
     ax2.set_yticks(A_idxes)
-    ax2.set_yticklabels([labels[i] for i in A_idxes])
-    ax2.grid(False)
+    ax2.set_yticklabels([""]*len(A_idxes))
+    #ax2.grid(True)
     if show_plot:
         fig.show()
     if plot_fp is not None:
@@ -442,11 +436,13 @@ def analyze_transitions(data, sizes, dictionaries, title_prefix="", show_plot=Fa
     ax1.set_yticks(np.arange(transitions_gen.shape[0]))
     ax1.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
     ax1.grid(False)
-    ax2 = fig.add_axes([0.85, 0.1, 0.1, 0.8])
+    bottom = ax1.get_position().get_points()[0, 1]
+    right = ax1.get_position().get_points()[1, 0]
+    top = ax1.get_position().get_points()[1, 1]
+    ax2 = fig.add_axes((right - 0.1, bottom, 0.1, top - bottom))
     ax2.matshow(transitions_gen.sum(axis=1).reshape((transitions_gen.shape[0], 1)))
     ax2.set_xticks([])
-    ax2.set_yticks(np.arange(transitions_gen.shape[0]))
-    ax2.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax2.set_yticks([])
     ax2.grid(False)
     if show_plot:
         fig.show()
@@ -471,11 +467,13 @@ def analyze_transitions(data, sizes, dictionaries, title_prefix="", show_plot=Fa
     ax1.set_yticks(np.arange(transitions_gen.shape[0]))
     ax1.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
     ax1.grid(False)
-    ax2 = fig.add_axes([0.85, 0.1, 0.1, 0.8])
+    bottom = ax1.get_position().get_points()[0, 1]
+    right = ax1.get_position().get_points()[1, 0]
+    top = ax1.get_position().get_points()[1, 1]
+    ax2 = fig.add_axes((right - 0.1, bottom, 0.1, top - bottom))
     ax2.matshow(transitions_gen.sum(axis=1).reshape((transitions_gen.shape[0], 1)))
     ax2.set_xticks([])
-    ax2.set_yticks(np.arange(transitions_gen.shape[0]))
-    ax2.set_yticklabels([dictionaries['duration_text'][i] for i in idxes])
+    ax2.set_yticks([])
     ax2.grid(False)
     if show_plot:
         fig.show()
