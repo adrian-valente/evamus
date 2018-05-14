@@ -27,7 +27,7 @@ def mergeTrack(s):
             t += event.tick
             if event.name in ['Note On', 'Note Off']:
                 candidate = {'t': t, 'event': event}
-                if True:  # candidate not in events:
+                if candidate not in events:
                     events.append(candidate)
     events = sorted(events, key=lambda k: k['t'])
     tick = 0

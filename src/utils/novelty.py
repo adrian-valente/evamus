@@ -8,7 +8,7 @@ from midiparser import writeMIDI
 from preprocessing import toMIDI
 
 
-def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path=None, labels=None,
+def novelty_analysis(corpus1, corpus2, motifs=(2,3,4,5,6), auto=None, path=None, labels=None,
                      ref_labels=None, corpus2Name="no_name", dictionaries=None, show_plot=False, plot_fp=None,
                      report=None):
     """
@@ -30,9 +30,10 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path=Non
     N1 = len(corpus1["dTseqs"])
 
     novelties = novelty(corpus1, corpus2, motifs)
+    auto2 = autonovelty(corpus2, motifs)
 
     if auto is None:
-        auto = autonovelty(corpus1)
+        auto = autonovelty(corpus1, motifs)
 
     if labels is None:
         labels = list(range(len(corpus2["dTseqs"])))
@@ -40,13 +41,16 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path=Non
         ref_labels = list(range(len(corpus1["dTseqs"])))
 
     # Make a plot
-    df = pd.DataFrame({'value': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "auto-novelty"})
-    df2 = pd.DataFrame({'value': novelties.ravel(),
+    df = pd.DataFrame({'Novelty': auto.ravel(), 'motif-size': motifs * auto.shape[0], 'model': "Original/Original"})
+    df2 = pd.DataFrame({'Novelty': novelties.ravel(),
                         'motif-size': motifs * novelties.shape[0],
-                        'model': corpus2Name})
-    df = pd.concat([df, df2])
+                        'model': corpus2Name+"/Original"})
+    df3 = pd.DataFrame({'Novelty': auto2.ravel(),
+                        'motif-size': motifs * auto2.shape[0],
+                        'model': corpus2Name+"/"+corpus2Name})
+    df = pd.concat([df, df2, df3])
     fig, ax = plt.subplots()
-    sns.violinplot(data=df, x="motif-size", y="value", hue="model", ax=ax, cut=0)
+    sns.violinplot(data=df, x="motif-size", y="Novelty", hue="model", ax=ax, cut=0)
     fig.suptitle("Novelty comparison of reference dataset and " + corpus2Name)
     if show_plot:
         fig.show()
@@ -129,20 +133,20 @@ def novelty_analysis(corpus1, corpus2, motifs=(2,4,8,16,32), auto=None, path=Non
 def plot_novelties(ref, novelties, names, motifs, plot_fp):
     dfs = []
     dfs.append(pd.DataFrame({'value': ref.ravel(), 'motif-size': motifs * ref.shape[0],
-                             'model': 'Reference auto-novelty'}))
+                             'model': 'Original'}))
     for i, nov in enumerate(novelties):
         dfs.append(pd.DataFrame({'value': nov.ravel(), 'motif-size': motifs * nov.shape[0],
                                  'model': names[i]}))
     df = pd.concat(dfs)
-    plt.figure()
+    plt.figure(figsize=(11,6))
     sns.factorplot(data=df, x='motif-size', y='value', hue='model', kind='violin', cut=0, legend_out=True)
     plt.savefig(plot_fp+'_violin.png')
 
-    plt.figure()
+    plt.figure(figsize=(11,6))
     sns.factorplot(data=df, x='motif-size', y='value', hue='model', kind='box', legend_out=True)
     plt.savefig(plot_fp+'_box.png')
 
-    plt.figure()
+    plt.figure(figsize=(11,6))
     l = len(novelties)+1
     markers = ['x', 'o', 's', 'P', "*", 'h']
     sns.factorplot(data=df, x='motif-size', y='value', hue='model', markers=markers[:l], palette="dark",

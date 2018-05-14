@@ -294,6 +294,26 @@ def analyze_chords(real_data, gen_data, title="Chord decomposition", real_dis=No
     # Compute statistical distance
     return tvDistance(real_dis, gen_dis)
 
+def plot_distributions(ref, distrs, names, plot_fp=None):
+    ref = normalize(ref)
+    distrs = [normalize(distr) for distr in distrs]
+    dfs = []
+    dfs.append(pd.DataFrame({'intervals': list(range(12)),
+                       'frequency': [ref[i] for i in range(12)],
+                       'distribution': 'Original'}))
+    for m, distr in enumerate(distrs):
+        dfs.append(pd.DataFrame({'intervals': list(range(12)),
+                       'frequency': [distr[i] for i in range(12)],
+                       'distribution': names[m]}))
+
+    fig, ax = plt.subplots(figsize=(11,6))
+    df = pd.concat(dfs)
+    sns.barplot(x='intervals', y='frequency', hue='distribution', data=df, ax=ax)
+
+    if plot_fp is None:
+        fig.show()
+    else:
+        plt.savefig(plot_fp)
 
 def preanalysis_intervals(data, make_plot=False, plot_fp=None):
     """

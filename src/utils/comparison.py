@@ -1,6 +1,6 @@
 from midiparser import parseFolder, getDictionaries, cleanDic
 from evaluation import preanalysis_chords, preanalysis_intervals, analyze_chords, analyze_intervals, \
-    analyze_transitions, plot_lengths
+    analyze_transitions, plot_lengths, plot_distributions
 from novelty import autonovelty, novelty_analysis, plot_novelties
 import matplotlib as mpl
 from keyAnalysis import key_analysis
@@ -16,7 +16,7 @@ def reduce_dataset(dataset, dictionaries):
 
 
 def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_distr_ref, 
-                        intervals_distr_ref, sizes, dictionaries, labels, ref_labels, motifs=(2,3,4,5,6),
+                        intervals_distr_ref, sizes, dictionaries, labels, ref_labels, motifs=(2,3,4,5,6,8),
                         report=None, report_path=None):
     if report is None:
         print("Dataset {}: {} songs".format(name, len(dataset["dTseqs"])))
@@ -68,7 +68,7 @@ def analyse_and_compare(dataset, ref_dataset, name, autonovelty_ref, chords_dist
     return novelties
 
 
-def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3, 4, 5, 6),
+def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3, 4, 5, 6, 8),
                write_report=True, report_path="report/"):
     """
     :param ref_dataset_path:
@@ -136,6 +136,8 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3
 
     # ANALYSIS OF EACH DATASET
     novelties = []
+    chord_distributions = []
+    interval_distributions = []
     for i, data in enumerate(datasets):
         print("Analysis of dataset {}".format(dataset_names[i]))
         if write_report:
@@ -145,13 +147,23 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3
                                              intervals_distr_ref, sizes, dictionaries, labels[i], ref_labels,
                                              motifs=motif_sizes, report=report, report_path=report_path))
         #key_analysis(data, dictionaries, report=report)
+        chord_distributions.append(preanalysis_chords(data))
+        interval_distributions.append(preanalysis_intervals(data))
+
 
     if write_report:
-        plot_novelties(autonovelty_ref, novelties, dataset_names, motif_sizes, plot_fp=report_path+"novelties.png")
-        report.write("Summary novelties\n==========================\n\n")
+        plot_novelties(autonovelty_ref, novelties, dataset_names, motif_sizes, plot_fp=report_path+"novelties")
+        plot_distributions(chords_distr_ref, chord_distributions, dataset_names, plot_fp=report_path+"chord_distrs.png")
+        plot_distributions(intervals_distr_ref, interval_distributions, dataset_names, plot_fp=report_path+"intervals_distrs.png")
+        report.write("Summary plots\n==========================\n\n")
+        report.write("Novelty\n------------\n\n")
         report.write("![](novelties_violin.png)\n\n")
         report.write("![](novelties_box.png)\n\n")
         report.write("![](novelties_point.png)\n\n")
+        report.write("Chord distributions\n------------\n\n")
+        report.write("![](chord_distrs.png)\n\n")
+        report.write("Interval distributions\n------------\n\n")
+        report.write("![](intervals_distrs.png)\n\n")
 
     if write_report:
         report.write(r'<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep/markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>')
