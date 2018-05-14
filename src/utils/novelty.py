@@ -150,7 +150,7 @@ def plot_novelties(ref, novelties, names, motifs, plot_fp):
     l = len(novelties)+1
     markers = ['x', 'o', 's', 'P', "*", 'h']
     sns.factorplot(data=df, x='motif-size', y='value', hue='model', markers=markers[:l], palette="dark",
-                   join=False, ci="sd", dodge=0.25)
+                   join=False, ci=0.9, dodge=0.25)
     plt.savefig(plot_fp+'_point.png')
 
 

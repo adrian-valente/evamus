@@ -508,7 +508,6 @@ def plot_lengths(dataset, dictionaries, title, plot_fp=None, show_plot=False):
         for dt in dataset["dTseqs"][s]:
             l += dictionaries['dTseqs'][dt]
         lengths.append(l)
-    print lengths
     fig, ax = plt.subplots()
     sns.distplot(lengths, kde=False, rug=True, bins=15)
     fig.suptitle(title)
