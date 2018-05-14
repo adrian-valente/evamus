@@ -295,20 +295,21 @@ def analyze_chords(real_data, gen_data, title="Chord decomposition", real_dis=No
     return tvDistance(real_dis, gen_dis)
 
 def plot_distributions(ref, distrs, names, plot_fp=None):
-    ref = normalize(ref)
-    distrs = [normalize(distr) for distr in distrs]
+
     dfs = []
-    dfs.append(pd.DataFrame({'intervals': list(range(12)),
-                       'frequency': [ref[i] for i in range(12)],
-                       'distribution': 'Original'}))
+    dfs.append(pd.DataFrame({'interval': list(range(12)),
+                       'frequency': [ref[0][i] for i in range(12)],
+                       'Model': 'Original',
+                       'std': [ref[1][i] for i in range(12)]}))
     for m, distr in enumerate(distrs):
-        dfs.append(pd.DataFrame({'intervals': list(range(12)),
-                       'frequency': [distr[i] for i in range(12)],
-                       'distribution': names[m]}))
+        dfs.append(pd.DataFrame({'interval': list(range(12)),
+                       'frequency': [distr[0][i] for i in range(12)],
+                       'Model': names[m],
+                       'std': [distr[1][i] for i in range(12)]}))
 
     fig, ax = plt.subplots(figsize=(11,6))
     df = pd.concat(dfs)
-    sns.barplot(x='intervals', y='frequency', hue='distribution', data=df, ax=ax)
+    sns.barplot(x='interval', y='frequency', hue='Model', yerr='std', data=df, ax=ax)
 
     if plot_fp is None:
         fig.show()
@@ -322,24 +323,36 @@ def preanalysis_intervals(data, make_plot=False, plot_fp=None):
     :param plot_fp: filename where to save the plot
     :returns: the disribution as a defaultdict (semitones -> frequencies)
     """
-    distr = defaultdict(float)
+    distrs = []
+    for k in range(5):
+        distr = defaultdict(float)
+        idxes = np.random.choice(len(data['dTseqs']), int(0.6*len(data['dTseqs'])))
+        for s, song in enumerate(data['dTseqs'][idxes]):
+            if s in idxes:
+                for i, dT in enumerate(song):
+                    if i > 0:
+                        diff = abs(data['pitchseqs'][s][i]-p) % 12
+                        distr[diff] += 1
+                    p = data['pitchseqs'][s][i]             
 
-    for s, song in enumerate(data['dTseqs']):
-        for i, dT in enumerate(song):
-            if i > 0:
-                diff = abs(data['pitchseqs'][s][i]-p) % 12
-                distr[diff] += 1
-            p = data['pitchseqs'][s][i]             
-
+        distrs.append(normalize(distr))
+    x = []
+    keys = sorted(set(distr.keys()))
+    for distr in distrs:
+        x.append([distr[k] for k in keys])
+    avg = np.mean(x, axis=0)
+    for k, m in zip(keys, avg):
+        distr[k] = m 
+    std = np.std(x, axis=0)
     if make_plot:
         keys = sorted(set(distr.keys()))
         idx = np.arange(len(keys))
         fig, ax = plt.subplots() 
         fig.suptitle("Intervals decomposition - Real distribution")
-        ax.bar(idx, [distr[k] for k in keys])
+        ax.bar(idx, [distr[k] for k in keys], yerr=std)
         ax.set_xticks(idx, keys)
         plt.savefig(plot_fp)
-    return distr
+    return distr, std_distr
 
 
 def analyze_intervals(real_data, gen_data, title="Interval decomposition", real_dis=None, 
