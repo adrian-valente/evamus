@@ -11,6 +11,18 @@ def getSong(dataset, i):
             "pitchseqs": dataset["pitchseqs"][i]}
 
 
+def getNote(song, i):
+    return (song["dTseqs"][i], song["tseqs"][i], song["pitchseqs"][i])
+
+
+def getLength(song, dictionaries):
+    l = 0
+    for dT in song["dTseqs"]:
+        l += dictionaries["dTseqs"][dT]
+    l += dictionaries["tseqs"][song["tseqs"][-1]]
+    return l
+
+
 def normalize(d):
     """
     Returns a normalized version of the dictionary d
