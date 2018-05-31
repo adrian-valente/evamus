@@ -31,6 +31,7 @@ def compare_models(splitted, modelsDic):
 
 
 def evaluate_model(splitted, model_class, **kargs):
+    print kargs
     models = []
     metrics = {'train': {}, 'test': {}}
     for i in range(len(splitted)):
@@ -514,7 +515,7 @@ def analyze_transitions(data, sizes, dictionaries, title_prefix="", show_plot=Fa
         plt.savefig(plot_fp + "_T.png")
 
 
-def plot_lengths(dataset, dictionaries, title, plot_fp=None, show_plot=False):
+def plot_lengths(dataset, dictionaries, title='', plot_fp=None, show_plot=False):
     lengths = []
     for s in range(len(dataset["dTseqs"])):
         l = 0

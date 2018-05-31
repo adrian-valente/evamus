@@ -1,7 +1,7 @@
 from midiparser import getDictionaries, parseFolder, cleanDic, writeMIDI
 
 
-def preprocess(datapath, writeMIDI=False, verbose=False):
+def preprocess(datapath, write_MIDI=False, verbose=False):
     """
     Parses a datapath and returns a preprocessed dataset, along with essential information
     :param datapath: path to a folder containing MIDI files
@@ -22,7 +22,7 @@ def preprocess(datapath, writeMIDI=False, verbose=False):
     xdTs, xTs, xPs, dTvocsize, Tvocsize, pitchvocsize = toZ(dataset, dictionaries)
     dataset = {'dTseqs': xdTs, 'tseqs': xTs, 'pitchseqs': xPs}
 
-    if writeMIDI:
+    if write_MIDI:
         dtseq, Tseq, pitchseq = toMIDI(xdTs[0], xTs[0], xPs[0], dictionaries)
         for dt, t, p in zip(dtseq, Tseq, pitchseq):
             print(dictionaries['duration_text'][dictionaries['dTseqs'].index(dt)],

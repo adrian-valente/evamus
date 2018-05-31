@@ -159,8 +159,6 @@ def comparison_novelties(ref_dataset, datasets, names, motifs=(2, 4, 8, 16, 32),
     Computes novelties for each of the datasets against ref_dataset, and plots a violinplot
     :param auto: optional precomputed autonovelty (with for example test vs train measure if desired)
     """
-    if auto is None:
-        auto = autonovelty(ref_dataset, motifs)
     dfs = dict()
     for i,dataset in enumerate(datasets):
         nov = novelty(ref_dataset, dataset, motifs)

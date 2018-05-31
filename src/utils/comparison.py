@@ -117,7 +117,7 @@ def comparison(ref_dataset_path, dataset_paths, dataset_names, motif_sizes=(2, 3
     if write_report:
         report.write("Reference dataset\n=================\n\n")
         report.write("{} songs\n\n".format(len(ref_dataset["dTseqs"])))
-    chords_distr_ref, std_chord_distr_ref = preanalysis_chords(ref_dataset, make_plot=write_report, plot_fp=report_path+"chords-real.png")
+    chords_distr_ref = preanalysis_chords(ref_dataset, make_plot=write_report, plot_fp=report_path+"chords-real.png")
     intervals_distr_ref, std_intervals_distr_ref = preanalysis_intervals(ref_dataset, make_plot=write_report,
                                                 plot_fp=report_path+"intervals-real.png")
     analyze_transitions(ref_dataset, sizes, dictionaries, "Reference data - ", plot_fp=report_path+'ref')
