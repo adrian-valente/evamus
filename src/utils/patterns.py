@@ -64,88 +64,33 @@ def patterns(data, sizes=(2,4,8,16), top=10, dictionaries=None):
         plt.savefig('hist_{}.png'.format(size))
 
 
-def autocorrelation(song, dictionaries, size=8, correlation='notes', plot=False):
+def autocorrelation(song, dictionaries, plot=False, maxT=None):
     N = len(song["dTseqs"])
 
     corrFunc = defaultdict(float)   # maps (difference in num quarter notes) -> sum of measured correlations
-    divisors = defaultdict(float)   # maps (difference in num quarter notes) -> num observations for this difference
+    obsCount = defaultdict(float)
 
     for i in range(N):
-        if i+size < N:
-            pattern = [(song["tseqs"][i], song["pitchseqs"][i])] + \
-                      [getNote(song, k) for k in range(i+1, i+size)]
-
-            tDiff = 0.
-            for j in range(i, N - size + 1):
-                if j != i:
-                    tDiff += dictionaries["dTseqs"][song["dTseqs"][j]]
-                divisors[tDiff] += 1.
-
-                if correlation == 'perfect':
-                    pattern2 = [(song["tseqs"][j], song["pitchseqs"][j])] + \
-                               [getNote(song, k) for k in range(j+1, j+size)]
-                    if pattern == pattern2:
-                        corrFunc[tDiff] += 1.
-
-                if correlation == 'notes':
-                    val = 0
-                    curTi = 0
-                    curTj = 0
-                    ki = 0
-                    kj = j
-                    # for all notes in the pattern, look for appearance on the shifted score
-                    while ki < size and kj < N:
-
-                        # for given note #ki in the pattern, for all coinciding notes on the shifted score,
-                        # see if they are equal
-                        if curTj == curTi:
-                            kj2 = kj
-                            curTj2 = curTj
-                            # loop over coinciding notes on the shifted score
-                            while curTj2 == curTi and kj2 < N:
-                                if ki == 0:
-                                    if pattern[ki] == (song["tseqs"][kj2], song["pitchseqs"][kj2]):
-                                        val += 1./size
-                                        break
-                                    else:
-                                        kj2 += 1
-                                        if kj2 < N:
-                                            curTj2 += dictionaries['dTseqs'][song["dTseqs"][kj2]]
-                                else:
-                                    if (pattern[ki][1], pattern[ki][2]) == (song["tseqs"][kj2], song["pitchseqs"][kj2]):
-                                        val += 1./size
-                                        break
-                                    else:
-                                        kj2 += 1
-                                        if kj2 < N:
-                                            curTj2 += dictionaries['dTseqs'][song["dTseqs"][kj2]]
-                            ki += 1
-                            if ki < size:
-                                curTi += dictionaries['dTseqs'][pattern[ki][0]]
-
-                        if curTj < curTi:
-                            kj += 1
-                            if kj < N:
-                                curTj += dictionaries['dTseqs'][song["dTseqs"][kj]]
-
-                        if curTj > curTi:
-                            ki += 1
-                            if ki < size:
-                                curTi += dictionaries['dTseqs'][pattern[ki][0]]
-                    if val > 0.:
-                        corrFunc[tDiff] += val
+        note = (song["tseqs"][i], song["pitchseqs"][i])
+        tDiff = 0.
+        for j in range(i, N):
+            if j != i:
+                tDiff += dictionaries["dTseqs"][song["dTseqs"][j]]
+            if tDiff > maxT:
+                break
+            if note == (song["tseqs"][j], song["pitchseqs"][j]):
+                corrFunc[tDiff] += 1
+            obsCount[tDiff] += 1
 
     corrs = []
     ts = []
-    divs = []
     for k in corrFunc:
-        corrFunc[k] /= divisors[k]
+        corrFunc[k] /= len(song["dTseqs"])
         ts.append(k)
-        divs.append(divisors[k])
         corrs.append(corrFunc[k])
 
     if plot:
-        plt.scatter(ts, corrs, s=divs)
+        plt.scatter(ts, corrs)
         plt.axvline(16, alpha=0.2, c='k')
         plt.axvline(32, alpha=0.2, c='k')
         plt.axvline(64, alpha=0.2, c='k')
@@ -153,18 +98,15 @@ def autocorrelation(song, dictionaries, size=8, correlation='notes', plot=False)
         plt.savefig("correlation.png")
         plt.clf()
 
-    return corrFunc, divisors
+    return corrFunc, obsCount
 
 
-def autocorrelationDataset(data, dictionaries, size=8, correlation='notes', alpha_mapping=False,
-                           plot_fn='correlation.png', threshold=None, maxNumPoints=None,
-                           maxT=None):
+def autocorrelationDataset(data, dictionaries, plot_fn='correlation.png', alpha_mapping=False, maxNumPoints=None,
+                           threshold=None, maxT=None):
     """
     Computes the autocorrelation function for all songs of a dataset and makes a plot with means and standard deviations
     :param data:
     :param dictionaries:
-    :param size: the pattern size used for measures of autocorrelation
-    :param correlation: type of correlation measure in 'perfect' or 'notes'
     :param alpha_mapping: whether to map alpha values in the plot as function of the number of observation for each
                         correlation value
     :param plot_fn: filename of plot
@@ -173,24 +115,22 @@ def autocorrelationDataset(data, dictionaries, size=8, correlation='notes', alph
     """
     nSongs = len(data["dTseqs"])
     correlationDistr = defaultdict(list)
-    observationsCounts = defaultdict(int)
+    observationsCounts = defaultdict(float)
 
     for i in tqdm(range(nSongs)):
         song = getSong(data, i)
-        corrFunc, divisors = autocorrelation(song, dictionaries, size, correlation)
+        corrFunc, songCounts = autocorrelation(song, dictionaries, maxT=maxT)
         for k in corrFunc:
             correlationDistr[k].append(corrFunc[k])
-            observationsCounts[k] += divisors[k]
+            observationsCounts[k] += songCounts[k]
 
     # Prepare for plotting
     ts = []
     corrMeans = []
     corrStds = []
-    maxObs = 0
-    minObs = observationsCounts[0]
+    maxObs = 0.
     # Get values with most observations if max number of points specified
     if maxNumPoints is not None:
-
         print "maxSize: {}".format(maxNumPoints)
         heap = []
         for k in observationsCounts:  # use a heap to get top x% values
@@ -209,29 +149,28 @@ def autocorrelationDataset(data, dictionaries, size=8, correlation='notes', alph
                 corrStds.append(np.std(correlationDistr[k]))
                 if k > 0:
                     maxObs = max(maxObs, observationsCounts[k])
-                    minObs = min(minObs, observationsCounts[k])
+    # Otherwise compute mean and standard deviation for all points
     else:
         for k in correlationDistr:
             mean = np.mean(correlationDistr[k])
-            if (threshold is None or mean > threshold) and (maxT is None or k <= maxT):
+            if threshold is None or mean > threshold:
                 ts.append(k)
                 corrMeans.append(mean)
                 corrStds.append(np.std(correlationDistr[k]))
-                if k > 0:
-                    maxObs = max(maxObs, observationsCounts[k])
-        minObs = np.min(observationsCounts.values())
-
-    print "minObs: {} ".format(minObs)
+            if k != 0 and observationsCounts[k] > maxObs:
+                maxObs = observationsCounts[k]
 
     # Plotting
     if alpha_mapping:
         for k in tqdm(range(len(ts))):
-            plt.errorbar(ts[k], corrMeans[k], corrStds[k], alpha=min(1., observationsCounts[ts[k]]/maxObs),
+            plt.errorbar(ts[k], corrMeans[k], corrStds[k], alpha=min(1., observationsCounts[ts[k]] / maxObs),
                          c='C0', linestyle='None', marker='o')
     else:
         plt.errorbar(ts, corrMeans, corrStds, linestyle='None', marker='o')
-    for i in range(0, int(np.max(ts)+1), 8):
+    for i in range(0, int(np.max(ts)+1), 4):
         plt.axvline(i, c='grey', alpha=0.3)
+    plt.xlabel("$\delta T$ (beats)")
+    plt.ylabel("autocorrelation")
     plt.savefig(plot_fn)
     plt.clf()
 
@@ -240,7 +179,7 @@ def autocorrelationDataset(data, dictionaries, size=8, correlation='notes', alph
     for t in top10:
         print " * t={}, mean correlation {:.2%}".format(ts[t], corrMeans[t])
 
-    return ts, corrMeans, corrStds, observationsCounts
+    return ts, corrMeans, corrStds
 
 
 
@@ -252,27 +191,36 @@ def __test__():
 
 
 def plot_all():
-    data, sizes, dictionaries, labels = preprocess('../../corpora/Original')
+    data, sizes, dictionaries, labels = preprocess('../corpora/Original')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-original.png',
-                           maxNumPoints=100, maxT=64, special='orig')
-    data, sizes, dictionaries, labels = preprocess('../../corpora/BachProp')
+                           maxNumPoints=100, maxT=64)
+    data, sizes, dictionaries, labels = preprocess('../corpora/BachProp')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-BP.png',
-                           maxNumPoints=100, maxT=64, special='bp')
-    data, sizes, dictionaries, labels = preprocess('../../corpora/DeepBach')
+                           maxNumPoints=100, maxT=64)
+    data, sizes, dictionaries, labels = preprocess('../corpora/DeepBach')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-DeepBach.png',
                            maxNumPoints=100, maxT=64)
-    data, sizes, dictionaries, labels = preprocess('../../corpora/IndepBP')
+    data, sizes, dictionaries, labels = preprocess('../corpora/IndepBP')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-IBP.png',
                            maxNumPoints=100, maxT=64)
-    data, sizes, dictionaries, labels = preprocess('../../corpora/MidiBP')
+    data, sizes, dictionaries, labels = preprocess('../corpora/MidiBP')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-MBP.png',
                            maxNumPoints=100, maxT=64)
-    data, sizes, dictionaries, labels = preprocess('../../corpora/MLP')
+    data, sizes, dictionaries, labels = preprocess('../corpora/MLP')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-MLP.png',
                            maxNumPoints=100, maxT=64)
-    data, sizes, dictionaries, labels = preprocess('../../corpora/PolyDAC')
+    data, sizes, dictionaries, labels = preprocess('../corpora/PolyDAC')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-PolyDAC.png',
                            maxNumPoints=100, maxT=64)
-    data, sizes, dictionaries, labels = preprocess('../../corpora/PolyRNN')
+    data, sizes, dictionaries, labels = preprocess('../corpora/PolyRNN')
     autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-PolyRNN.png',
                            maxNumPoints=100, maxT=64)
+    # data, sizes, dictionaries, labels = preprocess('../corpora/Nottingham/BachProp/')
+    # autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-N-BP.png',
+    #                        maxNumPoints=100, maxT=64)
+    # data, sizes, dictionaries, labels = preprocess('../corpora/Nottingham/Original/')
+    # autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-N-Original.png',
+    #                        maxNumPoints=100, maxT=64)
+    # data, sizes, dictionaries, labels = preprocess('../corpora/Nottingham/FUNgram/')
+    # autocorrelationDataset(data, dictionaries, alpha_mapping=True, plot_fn='correlation-N-FUNgram.png',
+    #                        maxNumPoints=100, maxT=64)
